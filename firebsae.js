@@ -1,9 +1,12 @@
-// firebase.js - Configuração para Portal QSSMA
+// firebase.js - VERSÃO COMPLETA CORRIGIDA
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { 
   getFirestore, 
   doc, 
-  getDoc,
+  getDoc, 
+  setDoc,
+  updateDoc,
+  deleteDoc,
   collection,
   onSnapshot,
   query,
@@ -11,14 +14,14 @@ import {
   getDocs,
   addDoc,
   serverTimestamp,
-  orderBy,
-  updateDoc,
-  deleteDoc
+  orderBy
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
 import { 
   getAuth, 
-  signInWithEmailAndPassword 
+  signInWithEmailAndPassword,
+  signOut,
+  createUserWithEmailAndPassword,
+  updateProfile
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 // Configuração do Firebase
@@ -43,7 +46,18 @@ async function loginEmailSenha(email, senha) {
     const userCredential = await signInWithEmailAndPassword(auth, email, senha);
     return userCredential.user;
   } catch (error) {
-    console.error('Erro login:', error.code);
+    throw new Error(getErrorMessage(error.code));
+  }
+}
+
+async function criarUsuario(email, senha, nome) {
+  try {
+    const userCredential = await createUserWithEmailAndPassword(auth, email, senha);
+    await updateProfile(userCredential.user, {
+      displayName: nome
+    });
+    return userCredential.user;
+  } catch (error) {
     throw new Error(getErrorMessage(error.code));
   }
 }
@@ -54,7 +68,10 @@ function getErrorMessage(errorCode) {
     'auth/user-disabled': 'Usuário desativado',
     'auth/user-not-found': 'Usuário não encontrado',
     'auth/wrong-password': 'Senha incorreta',
-    'auth/too-many-requests': 'Muitas tentativas. Tente novamente mais tarde'
+    'auth/email-already-in-use': 'E-mail já está em uso',
+    'auth/weak-password': 'Senha muito fraca',
+    'auth/too-many-requests': 'Muitas tentativas. Tente novamente mais tarde',
+    'auth/operation-not-allowed': 'Operação não permitida'
   };
   return messages[errorCode] || 'Erro ao fazer login';
 }
@@ -65,30 +82,49 @@ async function getColaborador(matricula) {
   return await getDoc(docRef);
 }
 
+async function getTodosColaboradores() {
+  const snapshot = await getDocs(collection(db, 'colaboradores'));
+  return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+async function criarColaborador(matricula, dados) {
+  const docRef = doc(db, 'colaboradores', matricula);
+  return await setDoc(docRef, {
+    ...dados,
+    criadoEm: serverTimestamp(),
+    ativo: true
+  });
+}
+
+async function atualizarColaborador(matricula, dados) {
+  const docRef = doc(db, 'colaboradores', matricula);
+  return await updateDoc(docRef, {
+    ...dados,
+    atualizadoEm: serverTimestamp()
+  });
+}
+
 // ================= AVISOS =================
 async function registrarAviso(dados) {
   return await addDoc(collection(db, 'avisos'), {
     ...dados,
-    timestamp: serverTimestamp()
+    timestamp: serverTimestamp(),
+    criadoPor: auth.currentUser?.email || 'Sistema'
   });
 }
 
 async function getAvisos() {
-  try {
-    const q = query(collection(db, 'avisos'), orderBy('timestamp', 'desc'));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-  } catch (error) {
-    console.error('Erro ao buscar avisos:', error);
-    return [];
-  }
+  const q = query(collection(db, 'avisos'), orderBy('timestamp', 'desc'));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
 async function updateAviso(avisoId, dados) {
   const docRef = doc(db, 'avisos', avisoId);
   return await updateDoc(docRef, {
     ...dados,
-    timestamp: serverTimestamp()
+    atualizadoEm: serverTimestamp(),
+    atualizadoPor: auth.currentUser?.email || 'Sistema'
   });
 }
 
@@ -99,44 +135,46 @@ async function deleteAviso(avisoId) {
 
 // ================= MONITORAMENTO =================
 function monitorarAvisos(callback) {
-  try {
-    const q = query(collection(db, 'avisos'), where("ativo", "==", true));
-    return onSnapshot(q, snapshot => {
-      const dados = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-      callback(dados);
-    }, error => {
-      console.error('Erro monitoramento avisos:', error);
-    });
-  } catch (error) {
-    console.error('Erro ao configurar monitoramento:', error);
-  }
+  const q = query(collection(db, 'avisos'), 
+    where("ativo", "==", true),
+    orderBy('timestamp', 'desc')
+  );
+  return onSnapshot(q, snapshot => {
+    const dados = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    callback(dados);
+  });
+}
+
+function monitorarColaboradores(callback) {
+  const q = query(collection(db, 'colaboradores'),
+    where("ativo", "==", true)
+  );
+  return onSnapshot(q, snapshot => {
+    const dados = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    callback(dados);
+  });
 }
 
 // ================= ESTATÍSTICAS =================
 async function getEstatisticasDashboard() {
   try {
-    const [avisosSnapshot, eventosSnapshot, colaboradoresSnapshot] = await Promise.all([
-      getDocs(query(collection(db, 'avisos'), where("ativo", "==", true))),
-      getDocs(collection(db, 'eventos')),
-      getDocs(collection(db, 'colaboradores'))
+    const [avisosSnapshot, colaboradoresSnapshot] = await Promise.all([
+      getDocs(query(collection(db, 'avisos'), where('ativo', '==', true))),
+      getDocs(query(collection(db, 'colaboradores'), where('ativo', '==', true)))
     ]);
 
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
-    
-    const eventosHoje = eventosSnapshot.docs.filter(doc => {
-      const data = doc.data().timestamp?.toDate();
-      return data && data >= hoje;
-    }).length;
-
     return {
-      totalAvisos: avisosSnapshot.size,
-      eventosHoje: eventosHoje,
-      totalColaboradores: colaboradoresSnapshot.size
+      totalAvisosAtivos: avisosSnapshot.docs.length,
+      totalColaboradores: colaboradoresSnapshot.docs.length,
+      usuariosOnline: 0 // Será implementado depois
     };
   } catch (error) {
-    console.error('Erro ao buscar estatísticas:', error);
-    return { totalAvisos: 0, eventosHoje: 0, totalColaboradores: 0 };
+    console.error('Erro ao carregar estatísticas:', error);
+    return {
+      totalAvisosAtivos: 0,
+      totalColaboradores: 0,
+      usuariosOnline: 0
+    };
   }
 }
 
@@ -144,12 +182,40 @@ async function getEstatisticasDashboard() {
 export {
   db,
   auth,
-  getColaborador,
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  collection,
+  addDoc,
+  getDocs,
+  query,
+  where,
+  orderBy,
+  serverTimestamp,
+  
+  // Autenticação
   loginEmailSenha,
+  criarUsuario,
+  signOut,
+  
+  // Colaboradores
+  getColaborador,
+  getTodosColaboradores,
+  criarColaborador,
+  atualizarColaborador,
+  
+  // Avisos
   registrarAviso,
   getAvisos,
   updateAviso,
   deleteAviso,
+  
+  // Monitoramento
   monitorarAvisos,
+  monitorarColaboradores,
+  
+  // Dashboard
   getEstatisticasDashboard
 };
