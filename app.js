@@ -23,6 +23,13 @@ let estadoApp = {
   modoAltoContraste: false
 };
 
+// URLs dos formulários
+const FORMULARIOS = {
+  evento: 'https://forms.gle/4kxcxyYX8wzdDyDt5',
+  radar: 'https://forms.gle/BZahsh5ZAAVyixjx5',
+  flash: 'https://forms.gle/9d6f4w7hcpyDSCCs5'
+};
+
 // ========== INICIALIZAÇÃO ==========
 document.addEventListener('DOMContentLoaded', () => {
   console.log('🚀 Portal QSSMA - Inicializando...');
@@ -30,13 +37,15 @@ document.addEventListener('DOMContentLoaded', () => {
   // Adicionar rodapé
   adicionarRodape();
   
+  // Configurar event listeners
+  configurarEventListeners();
+  
   // Verificar sessão existente
   verificarSessao();
   
   // Inicializar funcionalidades
   initDarkMode();
   initPWA();
-  initEventListeners();
   initConnectionMonitor();
   initAltoContraste();
   
@@ -59,6 +68,85 @@ function adicionarRodape() {
   document.body.appendChild(footer);
 }
 
+// ========== CONFIGURAR EVENT LISTENERS ==========
+function configurarEventListeners() {
+  // Botões de navegação
+  document.getElementById('entrarBtn')?.addEventListener('click', entrarNoPortal);
+  document.getElementById('voltarInicioBtn')?.addEventListener('click', () => mostrarTela('welcome'));
+  document.getElementById('voltarPerfilUsuarioBtn')?.addEventListener('click', () => mostrarTela('telaEscolhaPerfil'));
+  document.getElementById('voltarPerfilGestorBtn')?.addEventListener('click', () => mostrarTela('telaEscolhaPerfil'));
+  
+  // Seleção de perfil
+  document.querySelectorAll('.profile-card').forEach(card => {
+    card.addEventListener('click', function() {
+      const perfil = this.dataset.perfil;
+      selecionarPerfil(perfil);
+    });
+  });
+  
+  // Login usuário
+  document.getElementById('loginUsuarioBtn')?.addEventListener('click', loginUsuario);
+  document.getElementById('matriculaUsuario')?.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') loginUsuario();
+  });
+  
+  // Login gestor
+  document.getElementById('loginGestorBtn')?.addEventListener('click', loginGestor);
+  document.getElementById('gestorSenha')?.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') loginGestor();
+  });
+  
+  // Logout
+  document.getElementById('logoutUsuarioBtn')?.addEventListener('click', logout);
+  document.getElementById('logoutGestorBtn')?.addEventListener('click', logout);
+  
+  // Formulários
+  document.querySelectorAll('.feature-card[data-form]').forEach(card => {
+    card.addEventListener('click', function() {
+      const tipo = this.dataset.form;
+      const usarIframe = this.dataset.iframe === 'true';
+      abrirFormulario(tipo, usarIframe);
+    });
+  });
+  
+  // Avisos
+  document.getElementById('avisosBtn')?.addEventListener('click', mostrarAvisos);
+  document.getElementById('verAvisosBtn')?.addEventListener('click', mostrarAvisos);
+  document.getElementById('gerenciarAvisosBtn')?.addEventListener('click', gerenciarAvisos);
+  document.getElementById('closeAvisosModal')?.addEventListener('click', () => fecharModal('avisosModal'));
+  document.getElementById('fecharAvisosBtn')?.addEventListener('click', () => fecharModal('avisosModal'));
+  
+  // WhatsApp
+  document.getElementById('whatsappBtn')?.addEventListener('click', abrirSuporteWhatsApp);
+  document.getElementById('whatsappGestorBtn')?.addEventListener('click', abrirSuporteWhatsApp);
+  
+  // Formulário iframe
+  document.getElementById('fecharFormularioBtn')?.addEventListener('click', fecharFormulario);
+  
+  // Modais
+  document.querySelectorAll('.modal-back').forEach(modal => {
+    modal.addEventListener('click', function(e) {
+      if (e.target === this) {
+        this.style.display = 'none';
+      }
+    });
+  });
+}
+
+// ========== FUNÇÕES GLOBAIS (disponíveis via window) ==========
+window.mostrarTela = mostrarTela;
+window.logout = logout;
+window.abrirFormularioInterno = abrirFormularioInterno;
+window.fecharFormulario = fecharFormulario;
+window.abrirSuporteWhatsApp = abrirSuporteWhatsApp;
+window.mostrarAvisos = mostrarAvisos;
+window.gerenciarAvisos = gerenciarAvisos;
+window.criarNovoAviso = criarNovoAviso;
+window.salvarNovoAviso = salvarNovoAviso;
+window.editarAviso = editarAviso;
+window.salvarEdicaoAviso = salvarEdicaoAviso;
+window.excluirAviso = excluirAviso;
+
 // ========== GERENCIAMENTO DE SESSÃO ==========
 function verificarSessao() {
   const perfil = localStorage.getItem('perfil_ativo');
@@ -75,6 +163,7 @@ function verificarSessao() {
     };
     estadoApp.perfil = 'usuario';
     mostrarTela('tela-usuario');
+    updateUserStatus(nome, matricula, localStorage.getItem('usuario_funcao'));
     iniciarMonitoramentoAvisos();
     
   } else if (perfil === 'gestor' && gestorLogado) {
@@ -104,11 +193,11 @@ function updateUserStatus(nome, matricula, funcao) {
 }
 
 // ========== SELEÇÃO DE PERFIL ==========
-window.entrarNoPortal = function () {
+function entrarNoPortal() {
   mostrarTela('telaEscolhaPerfil');
-};
+}
 
-window.selecionarPerfil = function (perfil) {
+function selecionarPerfil(perfil) {
   console.log('👤 Perfil selecionado:', perfil);
   estadoApp.perfil = perfil;
   localStorage.setItem('perfil_ativo', perfil);
@@ -118,10 +207,10 @@ window.selecionarPerfil = function (perfil) {
   } else if (perfil === 'gestor') {
     mostrarTela('tela-gestor-login');
   }
-};
+}
 
 // ========== LOGIN USUÁRIO ==========
-window.loginUsuario = async function () {
+async function loginUsuario() {
   const input = document.getElementById('matriculaUsuario');
   const loginBtn = document.getElementById('loginUsuarioBtn');
   
@@ -185,10 +274,10 @@ window.loginUsuario = async function () {
       loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Entrar';
     }
   }
-};
+}
 
 // ========== LOGIN GESTOR ==========
-window.loginGestor = async function () {
+async function loginGestor() {
   const email = document.getElementById('gestorEmail').value;
   const senha = document.getElementById('gestorSenha').value;
   const loginBtn = document.getElementById('loginGestorBtn');
@@ -229,10 +318,10 @@ window.loginGestor = async function () {
       loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Entrar';
     }
   }
-};
+}
 
 // ========== LOGOUT ==========
-window.logout = function () {
+function logout() {
   if (estadoApp.unsubscribeAvisos) estadoApp.unsubscribeAvisos();
   
   estadoApp = {
@@ -259,10 +348,24 @@ window.logout = function () {
   mostrarTela('welcome');
   
   console.log('👋 Usuário deslogado');
-};
+}
 
-// ========== BOTÕES DE INSPEÇÃO (COM IFRAME) ==========
-window.abrirFormularioInterno = function(tipo, url) {
+// ========== FORMULÁRIOS ==========
+function abrirFormulario(tipo, usarIframe = true) {
+  const url = FORMULARIOS[tipo];
+  if (!url) {
+    alert('Formulário não encontrado');
+    return;
+  }
+  
+  if (usarIframe) {
+    abrirFormularioInterno(tipo, url);
+  } else {
+    window.open(url, '_blank');
+  }
+}
+
+function abrirFormularioInterno(tipo, url) {
   const iframeContainer = document.getElementById('iframeContainer');
   const iframe = document.getElementById('formIframe');
   const formTitle = document.getElementById('formTitle');
@@ -280,10 +383,17 @@ window.abrirFormularioInterno = function(tipo, url) {
     case 'flash':
       titulo = 'FLASH REPORT';
       break;
+    default:
+      titulo = 'FORMULÁRIO';
   }
   
   formTitle.textContent = titulo;
+  
+  // Configurar iframe com segurança
   iframe.src = url;
+  iframe.onload = function() {
+    console.log('✅ Iframe carregado:', url);
+  };
   
   mostrarTela('tela-formulario-iframe');
   
@@ -291,9 +401,9 @@ window.abrirFormularioInterno = function(tipo, url) {
   if (estadoApp.usuario) {
     console.log(`📝 ${estadoApp.usuario.nome} abriu ${titulo}`);
   }
-};
+}
 
-window.fecharFormulario = function() {
+function fecharFormulario() {
   const iframe = document.getElementById('formIframe');
   if (iframe) {
     iframe.src = 'about:blank';
@@ -301,19 +411,19 @@ window.fecharFormulario = function() {
   
   if (estadoApp.perfil === 'usuario') {
     mostrarTela('tela-usuario');
-  } else {
+  } else if (estadoApp.perfil === 'gestor') {
     mostrarTela('tela-gestor-dashboard');
   }
-};
+}
 
 // ========== SUPORTE WHATSAPP ==========
-window.abrirSuporteWhatsApp = function() {
+function abrirSuporteWhatsApp() {
   const telefone = '559392059914';
   const mensagem = encodeURIComponent('Olá! Preciso de suporte no Portal QSSMA.');
   const url = `https://wa.me/${telefone}?text=${mensagem}`;
   
   window.open(url, '_blank', 'noopener,noreferrer');
-};
+}
 
 // ========== AVISOS ==========
 function iniciarMonitoramentoAvisos() {
@@ -330,46 +440,40 @@ function iniciarMonitoramentoAvisos() {
   });
 }
 
-window.mostrarAvisos = function() {
+function mostrarAvisos() {
   const avisos = estadoApp.avisosAtivos || [];
+  const container = document.getElementById('avisosDinamicos');
+  
+  if (!container) return;
   
   if (avisos.length === 0) {
-    alert('📭 Nenhum aviso no momento');
-    return;
+    container.innerHTML = `
+      <div class="empty-state">
+        <i class="fas fa-bullhorn"></i>
+        <h4>Nenhum aviso no momento</h4>
+        <p>Não há avisos ativos no sistema.</p>
+      </div>
+    `;
+  } else {
+    const avisosHTML = avisos.filter(aviso => aviso.ativo).map(aviso => `
+      <div class="aviso-item">
+        <div class="aviso-header">
+          <strong>${aviso.titulo}</strong>
+          <small>${aviso.timestamp ? new Date(aviso.timestamp.toDate()).toLocaleDateString('pt-BR') : ''}</small>
+        </div>
+        <p>${aviso.mensagem}</p>
+        <small class="aviso-destino">Para: ${aviso.destino || 'Todos'}</small>
+      </div>
+    `).join('');
+    
+    container.innerHTML = avisosHTML;
   }
   
-  const avisosHTML = avisos.filter(aviso => aviso.ativo).map(aviso => `
-    <div class="aviso-item">
-      <div class="aviso-header">
-        <strong>${aviso.titulo}</strong>
-        <small>${aviso.timestamp ? new Date(aviso.timestamp.toDate()).toLocaleDateString('pt-BR') : ''}</small>
-      </div>
-      <p>${aviso.mensagem}</p>
-      <small class="aviso-destino">Para: ${aviso.destino || 'Todos'}</small>
-    </div>
-  `).join('');
-  
-  const modal = document.createElement('div');
-  modal.className = 'modal-back';
-  modal.innerHTML = `
-    <div class="modal">
-      <button class="close" onclick="this.parentElement.parentElement.remove()">✕</button>
-      <h3>📢 Avisos e Comunicados</h3>
-      <div class="avisos-list">
-        ${avisosHTML}
-      </div>
-      <div class="modal-footer">
-        <button class="btn" onclick="this.parentElement.parentElement.remove()">Fechar</button>
-      </div>
-    </div>
-  `;
-  
-  document.body.appendChild(modal);
-  modal.style.display = 'flex';
-};
+  abrirModal('avisosModal');
+}
 
 // ========== GESTÃO DE AVISOS (GESTOR) ==========
-window.gerenciarAvisos = async function() {
+async function gerenciarAvisos() {
   try {
     showLoading('Carregando avisos...');
     
@@ -378,9 +482,10 @@ window.gerenciarAvisos = async function() {
     
     const modal = document.createElement('div');
     modal.className = 'modal-back';
+    modal.id = 'gerenciarAvisosModal';
     modal.innerHTML = `
       <div class="modal large">
-        <button class="close" onclick="this.parentElement.parentElement.remove()">✕</button>
+        <button class="close" onclick="fecharModal('gerenciarAvisosModal')">✕</button>
         <h3><i class="fas fa-bullhorn"></i> Gerenciar Avisos</h3>
         
         <div class="admin-actions-bar">
@@ -389,7 +494,7 @@ window.gerenciarAvisos = async function() {
           </button>
         </div>
         
-        <div class="avisos-admin-list">
+        <div class="avisos-admin-list" id="avisosAdminList">
           ${avisos.length === 0 ? `
             <div class="empty-state">
               <i class="fas fa-bullhorn"></i>
@@ -436,14 +541,15 @@ window.gerenciarAvisos = async function() {
   } finally {
     hideLoading();
   }
-};
+}
 
-window.criarNovoAviso = function() {
+function criarNovoAviso() {
   const modal = document.createElement('div');
   modal.className = 'modal-back';
+  modal.id = 'novoAvisoModal';
   modal.innerHTML = `
     <div class="modal">
-      <button class="close" onclick="this.parentElement.parentElement.remove()">✕</button>
+      <button class="close" onclick="fecharModal('novoAvisoModal')">✕</button>
       <h3><i class="fas fa-plus"></i> Criar Novo Aviso</h3>
       
       <div class="form-group">
@@ -475,7 +581,7 @@ window.criarNovoAviso = function() {
         <button class="btn btn-primary" onclick="salvarNovoAviso()">
           <i class="fas fa-save"></i> Salvar Aviso
         </button>
-        <button class="btn btn-secondary" onclick="this.parentElement.parentElement.parentElement.remove()">
+        <button class="btn btn-secondary" onclick="fecharModal('novoAvisoModal')">
           <i class="fas fa-times"></i> Cancelar
         </button>
       </div>
@@ -484,13 +590,13 @@ window.criarNovoAviso = function() {
   
   document.body.appendChild(modal);
   modal.style.display = 'flex';
-};
+}
 
-window.salvarNovoAviso = async function() {
-  const titulo = document.getElementById('novoAvisoTitulo').value;
-  const mensagem = document.getElementById('novoAvisoMensagem').value;
-  const destino = document.getElementById('novoAvisoDestino').value;
-  const ativo = document.getElementById('novoAvisoAtivo').checked;
+async function salvarNovoAviso() {
+  const titulo = document.getElementById('novoAvisoTitulo')?.value;
+  const mensagem = document.getElementById('novoAvisoMensagem')?.value;
+  const destino = document.getElementById('novoAvisoDestino')?.value;
+  const ativo = document.getElementById('novoAvisoAtivo')?.checked;
   
   if (!titulo || !mensagem) {
     alert('Preencha título e mensagem');
@@ -510,7 +616,8 @@ window.salvarNovoAviso = async function() {
     
     mostrarNotificacao('✅ Aviso Criado', 'Aviso criado com sucesso!');
     
-    document.querySelector('.modal-back').remove();
+    fecharModal('novoAvisoModal');
+    fecharModal('gerenciarAvisosModal');
     gerenciarAvisos();
     
   } catch (erro) {
@@ -519,9 +626,9 @@ window.salvarNovoAviso = async function() {
   } finally {
     hideLoading();
   }
-};
+}
 
-window.editarAviso = async function(avisoId) {
+async function editarAviso(avisoId) {
   try {
     showLoading('Carregando aviso...');
     
@@ -533,9 +640,10 @@ window.editarAviso = async function(avisoId) {
     
     const modal = document.createElement('div');
     modal.className = 'modal-back';
+    modal.id = 'editarAvisoModal';
     modal.innerHTML = `
       <div class="modal">
-        <button class="close" onclick="this.parentElement.parentElement.remove()">✕</button>
+        <button class="close" onclick="fecharModal('editarAvisoModal')">✕</button>
         <h3><i class="fas fa-edit"></i> Editar Aviso</h3>
         
         <div class="form-group">
@@ -567,7 +675,7 @@ window.editarAviso = async function(avisoId) {
           <button class="btn btn-primary" onclick="salvarEdicaoAviso('${avisoId}')">
             <i class="fas fa-save"></i> Salvar Alterações
           </button>
-          <button class="btn btn-secondary" onclick="this.parentElement.parentElement.parentElement.remove()">
+          <button class="btn btn-secondary" onclick="fecharModal('editarAvisoModal')">
             <i class="fas fa-times"></i> Cancelar
           </button>
         </div>
@@ -583,13 +691,13 @@ window.editarAviso = async function(avisoId) {
   } finally {
     hideLoading();
   }
-};
+}
 
-window.salvarEdicaoAviso = async function(avisoId) {
-  const titulo = document.getElementById('editarAvisoTitulo').value;
-  const mensagem = document.getElementById('editarAvisoMensagem').value;
-  const destino = document.getElementById('editarAvisoDestino').value;
-  const ativo = document.getElementById('editarAvisoAtivo').checked;
+async function salvarEdicaoAviso(avisoId) {
+  const titulo = document.getElementById('editarAvisoTitulo')?.value;
+  const mensagem = document.getElementById('editarAvisoMensagem')?.value;
+  const destino = document.getElementById('editarAvisoDestino')?.value;
+  const ativo = document.getElementById('editarAvisoAtivo')?.checked;
   
   if (!titulo || !mensagem) {
     alert('Preencha título e mensagem');
@@ -609,7 +717,8 @@ window.salvarEdicaoAviso = async function(avisoId) {
     
     mostrarNotificacao('✅ Aviso Atualizado', 'Aviso atualizado com sucesso!');
     
-    document.querySelector('.modal-back').remove();
+    fecharModal('editarAvisoModal');
+    fecharModal('gerenciarAvisosModal');
     gerenciarAvisos();
     
   } catch (erro) {
@@ -618,9 +727,9 @@ window.salvarEdicaoAviso = async function(avisoId) {
   } finally {
     hideLoading();
   }
-};
+}
 
-window.excluirAviso = async function(avisoId) {
+async function excluirAviso(avisoId) {
   if (!confirm('Tem certeza que deseja excluir este aviso?\n\nEsta ação não pode ser desfeita.')) {
     return;
   }
@@ -643,7 +752,7 @@ window.excluirAviso = async function(avisoId) {
   } finally {
     hideLoading();
   }
-};
+}
 
 // ========== ESTATÍSTICAS DASHBOARD ==========
 async function carregarEstatisticas() {
@@ -691,7 +800,7 @@ function toggleAltoContraste() {
 }
 
 // ========== NAVEGAÇÃO ENTRE TELAS ==========
-window.mostrarTela = function(id) {
+function mostrarTela(id) {
   console.log('🔄 Mostrando tela:', id);
   
   document.querySelectorAll('.tela').forEach(tela => {
@@ -708,40 +817,48 @@ window.mostrarTela = function(id) {
   alvo.classList.remove('hidden');
   alvo.classList.add('ativa');
   
+  // Criar botão de pânico se não for tela inicial
+  if (id !== 'welcome' && id !== 'telaEscolhaPerfil') {
+    criarBotaoPanico();
+  } else {
+    removerBotaoPanico();
+  }
+  
   window.scrollTo({ top: 0, behavior: 'smooth' });
-};
+}
+
+// ========== BOTÃO DE PÂNICO FLUTUANTE ==========
+function criarBotaoPanico() {
+  removerBotaoPanico();
+  
+  const botaoPanico = document.createElement('button');
+  botaoPanico.className = 'botao-panico-flutuante';
+  botaoPanico.innerHTML = '<i class="fas fa-phone-alt"></i>';
+  botaoPanico.setAttribute('title', 'Emergência - Suporte QSSMA');
+  botaoPanico.onclick = abrirSuporteWhatsApp;
+  
+  document.body.appendChild(botaoPanico);
+}
+
+function removerBotaoPanico() {
+  const botaoAntigo = document.querySelector('.botao-panico-flutuante');
+  if (botaoAntigo) {
+    botaoAntigo.remove();
+  }
+}
 
 // ========== NOTIFICAÇÕES ==========
 function mostrarNotificacao(titulo, mensagem) {
-  if (!("Notification" in window)) {
-    console.log("Este navegador não suporta notificações desktop");
-    return;
-  }
+  // Notificação na tela
+  criarNotificacaoTela(titulo, mensagem);
   
-  if (Notification.permission === "granted") {
-    criarNotificacao(titulo, mensagem);
-  } else if (Notification.permission !== "denied") {
-    Notification.requestPermission().then(permission => {
-      if (permission === "granted") {
-        criarNotificacao(titulo, mensagem);
-      }
+  // Notificação do navegador
+  if ("Notification" in window && Notification.permission === "granted") {
+    new Notification(titulo, {
+      body: mensagem,
+      icon: 'logo.jpg'
     });
   }
-  
-  criarNotificacaoTela(titulo, mensagem);
-}
-
-function criarNotificacao(titulo, mensagem) {
-  const notification = new Notification(titulo, {
-    body: mensagem,
-    icon: 'logo.jpg',
-    tag: 'portal-qssma'
-  });
-  
-  notification.onclick = function() {
-    window.focus();
-    this.close();
-  };
 }
 
 function criarNotificacaoTela(titulo, mensagem) {
@@ -764,6 +881,37 @@ function criarNotificacaoTela(titulo, mensagem) {
   }, 5000);
 }
 
+// ========== FUNÇÕES DE UTILIDADE ==========
+function showLoading(message = 'Carregando...') {
+  const overlay = document.getElementById('loadingOverlay');
+  const text = document.getElementById('loadingText');
+  
+  if (overlay) overlay.style.display = 'flex';
+  if (text) text.textContent = message;
+}
+
+function hideLoading() {
+  const overlay = document.getElementById('loadingOverlay');
+  if (overlay) overlay.style.display = 'none';
+}
+
+function abrirModal(modalId) {
+  const modal = document.getElementById(modalId);
+  if (modal) {
+    modal.style.display = 'flex';
+  }
+}
+
+function fecharModal(modalId) {
+  const modal = document.getElementById(modalId);
+  if (modal) {
+    modal.style.display = 'none';
+    if (modalId !== 'avisosModal') {
+      modal.remove();
+    }
+  }
+}
+
 // ========== FUNÇÕES DE TEMAS E PWA ==========
 function initDarkMode() {
   const darkToggle = document.getElementById('darkToggle');
@@ -778,6 +926,17 @@ function initDarkMode() {
   }
   
   darkToggle.addEventListener('click', toggleDarkMode);
+  prefersDark.addEventListener('change', (e) => {
+    if (!localStorage.getItem('qssma_dark')) {
+      if (e.matches) {
+        document.body.classList.add('dark');
+        updateDarkModeIcon(true);
+      } else {
+        document.body.classList.remove('dark');
+        updateDarkModeIcon(false);
+      }
+    }
+  });
 }
 
 function toggleDarkMode() {
@@ -806,7 +965,7 @@ function initPWA() {
     installBtn.style.display = 'flex';
     console.log('📱 PWA pode ser instalado');
     
-    // Mostrar aviso PWA na tela inicial
+    // Mostrar aviso PWA
     const pwaAviso = document.createElement('div');
     pwaAviso.className = 'alert-card pwa-alert';
     pwaAviso.innerHTML = `
@@ -874,86 +1033,10 @@ function updateOnlineStatus() {
   if (offlineBanner) {
     offlineBanner.style.display = navigator.onLine ? 'none' : 'block';
   }
-}
-
-// ========== FUNÇÕES DE UTILIDADE ==========
-function showLoading(message = 'Carregando...') {
-  const overlay = document.getElementById('loadingOverlay');
-  const text = document.getElementById('loadingText');
   
-  if (overlay) overlay.style.display = 'flex';
-  if (text) text.textContent = message;
-}
-
-function hideLoading() {
-  const overlay = document.getElementById('loadingOverlay');
-  if (overlay) overlay.style.display = 'none';
-}
-
-function initEventListeners() {
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-      closeAllModals();
-    }
-  });
-  
-  document.querySelectorAll('.modal-back').forEach(modal => {
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) {
-        modal.remove();
-      }
-    });
-  });
-}
-
-function closeAllModals() {
-  document.querySelectorAll('.modal-back').forEach(modal => {
-    modal.remove();
-  });
-}
-
-// ========== SERVICE WORKER ==========
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('service-worker.js')
-      .then(registration => {
-        console.log('✅ ServiceWorker registrado:', registration.scope);
-      })
-      .catch(error => {
-        console.log('❌ Falha ao registrar ServiceWorker:', error);
-      });
-  });
-}
-
-// Botão de Pânico Flutuante
-function criarBotaoPanico() {
-  if (estadoApp.perfil && estadoApp.perfil !== 'welcome') {
-    const botaoPanico = document.createElement('button');
-    botaoPanico.className = 'botao-panico-flutuante';
-    botaoPanico.innerHTML = '<i class="fas fa-phone-alt"></i>';
-    botaoPanico.setAttribute('title', 'Emergência - Suporte QSSMA');
-    botaoPanico.onclick = abrirSuporteWhatsApp;
-    
-    document.body.appendChild(botaoPanico);
+  if (!navigator.onLine) {
+    mostrarNotificacao('📶 Modo Offline', 'Algumas funcionalidades podem não estar disponíveis');
   }
 }
-
-// Chamar após mudança de tela
-window.mostrarTela = (function(original) {
-  return function(id) {
-    original(id);
-    
-    // Remover botão anterior se existir
-    const botaoAntigo = document.querySelector('.botao-panico-flutuante');
-    if (botaoAntigo) {
-      botaoAntigo.remove();
-    }
-    
-    // Criar novo botão se não for tela inicial
-    if (id !== 'welcome' && id !== 'telaEscolhaPerfil') {
-      criarBotaoPanico();
-    }
-  };
-})(window.mostrarTela);
 
 console.log('🚀 Portal QSSMA carregado com sucesso!');
