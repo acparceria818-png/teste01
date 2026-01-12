@@ -1,0 +1,641 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="description" content="Portal QSSMA - Sistema de Gestão em Segurança">
+  <meta name="theme-color" content="#b00000" />
+  <title>Portal QSSMA - Sistema de Gestão</title>
+  
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="logo.jpg" type="image/jpg">
+  
+  <!-- CSS externo -->
+  <link rel="stylesheet" href="styles.css">
+  
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- JS externo -->
+  <script type="module" src="firebase.js"></script>
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+
+<header>
+  <img src="logo.jpg" alt="Logo QSSMA" class="logo" loading="lazy" />
+  <h1>PORTAL QSSMA - Gestão em Segurança</h1>
+  <div class="user-status" id="userStatus" style="display:none">
+    <span id="userName"></span>
+    <button class="logout-btn" onclick="logout()" title="Sair">
+      <i class="fas fa-sign-out-alt"></i>
+    </button>
+  </div>
+</header>
+
+<!-- BOTÃO FLUTUANTE DE PÂNICO -->
+<button class="panic-btn" id="panicBtn" onclick="abrirEmergencia()" title="EMERGÊNCIA - Contato Imediato">
+  <i class="fas fa-phone"></i>
+  <span class="panic-label">SOS</span>
+</button>
+
+<!-- BOTÃO DE MODO EXTERNO -->
+<button class="external-mode-btn" id="externalModeBtn" onclick="toggleExternalMode()" title="Modo Externo - Alto Contraste">
+  <i class="fas fa-sun"></i>
+</button>
+
+<!-- BOTÃO DE VOLTAR PARA FORMULÁRIOS -->
+<button class="back-from-form-btn" id="backFromFormBtn" onclick="fecharFormulario()" title="Voltar ao Menu">
+  <i class="fas fa-arrow-left"></i> Voltar
+</button>
+
+<div class="top-actions container">
+  <div>
+    <button class="icon-btn" id="installBtn" style="display:none" aria-label="Instalar aplicativo">
+      <i class="fas fa-download"></i> Instalar App
+    </button>
+  </div>
+  <div>
+    <button class="icon-btn" id="darkToggle" title="Alternar tema claro/escuro">
+      <i class="fas fa-moon"></i>
+    </button>
+    <button class="icon-btn" id="contrastToggle" title="Alto Contraste">
+      <i class="fas fa-adjust"></i>
+    </button>
+    <span class="connection-status" id="connectionStatus" title="Status da conexão">
+      <i class="fas fa-circle"></i>
+    </span>
+  </div>
+</div>
+
+<main class="container">
+
+  <!-- TELA DE BOAS VINDAS -->
+  <section id="welcome" class="tela ativa">
+    <div class="welcome-content">
+      <img src="avatar.png" class="avatar-large" alt="Avatar QSSMA" loading="lazy" />
+      <div class="welcome-text">
+        <h2><i class="fas fa-shield-alt"></i> Bem-vindo ao Portal QSSMA</h2>
+        <p>Sistema de gestão e registro de eventos de segurança da empresa.</p>
+        
+        <div class="pwa-alert-card">
+          <div class="pwa-alert-icon">
+            <i class="fas fa-mobile-alt"></i>
+          </div>
+          <div class="pwa-alert-content">
+            <strong>Melhor experiência:</strong> Adicione este app à sua tela inicial!
+            <small>Clique em "Instalar App" acima para acesso rápido offline.</small>
+          </div>
+        </div>
+        
+        <button class="btn btn-primary btn-large" onclick="entrarNoPortal()">
+          <i class="fas fa-sign-in-alt"></i> Acessar Portal
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- TELA: ESCOLHA DE PERFIL -->
+  <section id="telaEscolhaPerfil" class="tela hidden">
+    <div class="section-header">
+      <h2><i class="fas fa-user-circle"></i> Selecione seu perfil</h2>
+      <p>Como você está acessando o sistema?</p>
+    </div>
+    
+    <div class="cards-grid">
+      <div class="profile-card" onclick="selecionarPerfil('usuario')">
+        <div class="card-icon usuario">
+          <i class="fas fa-user-shield"></i>
+        </div>
+        <h3>Colaborador</h3>
+        <p>Acesso para registro de eventos e inspeções de segurança</p>
+        <div class="card-features">
+          <span><i class="fas fa-clipboard-check"></i> Registros</span>
+          <span><i class="fas fa-search"></i> Inspeções</span>
+          <span><i class="fas fa-bell"></i> Avisos</span>
+        </div>
+      </div>
+      
+      <div class="profile-card" onclick="selecionarPerfil('gestor')">
+        <div class="card-icon gestor">
+          <i class="fas fa-cogs"></i>
+        </div>
+        <h3>Gestor</h3>
+        <p>Acesso administrativo para gestão do sistema QSSMA</p>
+        <div class="card-features">
+          <span><i class="fas fa-chart-line"></i> Dashboard</span>
+          <span><i class="fas fa-users"></i> Colaboradores</span>
+          <span><i class="fas fa-bullhorn"></i> Avisos</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="action-footer">
+      <button class="btn btn-secondary" onclick="mostrarTela('welcome')">
+        <i class="fas fa-arrow-left"></i> Voltar
+      </button>
+    </div>
+  </section>
+
+  <!-- TELA: LOGIN USUÁRIO -->
+  <section id="tela-usuario-login" class="tela hidden">
+    <div class="section-header">
+      <h2><i class="fas fa-user-shield"></i> Acesso do Colaborador</h2>
+      <p>Informe sua matrícula para acessar o sistema</p>
+    </div>
+    
+    <div class="auth-card">
+      <div class="auth-icon">
+        <i class="fas fa-id-card"></i>
+      </div>
+      
+      <div class="form-group">
+        <label for="matriculaUsuario">
+          <i class="fas fa-hashtag"></i> Matrícula
+        </label>
+        <input
+          id="matriculaUsuario"
+          type="text"
+          placeholder="Digite sua matrícula"
+          class="form-input"
+          aria-label="Matrícula do colaborador"
+          maxlength="10"
+          autocomplete="off"
+        />
+        <div class="form-hint">
+          <i class="fas fa-info-circle"></i> Exemplo: QS1234
+        </div>
+      </div>
+      
+      <button class="btn btn-primary btn-block" onclick="confirmarMatriculaUsuario()" id="loginUsuarioBtn">
+        <i class="fas fa-sign-in-alt"></i> Entrar
+      </button>
+      
+      <div class="auth-footer">
+        <p><i class="fas fa-exclamation-triangle"></i> Apenas colaboradores autorizados</p>
+        <p class="auth-help">Problemas com a matrícula? Procure o RH ou o Gestor de QSSMA.</p>
+      </div>
+    </div>
+    
+    <div class="action-footer">
+      <button class="btn btn-secondary" onclick="mostrarTela('telaEscolhaPerfil')">
+        <i class="fas fa-arrow-left"></i> Voltar
+      </button>
+    </div>
+  </section>
+
+  <!-- TELA: USUÁRIO AUTENTICADO -->
+  <section id="tela-usuario" class="tela hidden">
+    <div class="user-header">
+      <div class="user-avatar-large">
+        <i class="fas fa-user-circle"></i>
+      </div>
+      <div class="user-info">
+        <h2>Olá, <span id="colaboradorNome"></span>!</h2>
+        <div class="user-details">
+          <span class="user-badge">
+            <i class="fas fa-id-card"></i> <span id="colaboradorMatricula"></span>
+          </span>
+          <span class="user-badge">
+            <i class="fas fa-briefcase"></i> <span id="colaboradorFuncao"></span>
+          </span>
+          <span class="user-badge">
+            <i class="fas fa-building"></i> Setor: Segurança
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="cards-grid">
+      <div class="feature-card" onclick="abrirFormularioInterno('https://forms.gle/4kxcxyYX8wzdDyDt5', 'Informe de Evento')">
+        <div class="card-icon danger">
+          <i class="fas fa-exclamation-triangle"></i>
+        </div>
+        <h3>Informe de Evento</h3>
+        <p>Registro de eventos de segurança</p>
+        <span class="color-badge red">🔴 Crítico</span>
+      </div>
+      
+      <div class="feature-card" onclick="abrirFormularioInterno('https://forms.gle/BZahsh5ZAAVyixjx5', 'Radar Móvel')">
+        <div class="card-icon warning">
+          <i class="fas fa-tachometer-alt"></i>
+        </div>
+        <h3>Radar Móvel</h3>
+        <p>Registro de velocidade</p>
+        <span class="color-badge yellow">🟡 Atenção</span>
+      </div>
+      
+      <div class="feature-card" onclick="abrirFormularioInterno('https://forms.gle/9d6f4w7hcpyDSCCs5', 'Flash Report')">
+        <div class="card-icon success">
+          <i class="fas fa-bolt"></i>
+        </div>
+        <h3>Flash Report</h3>
+        <p>Relatório rápido de incidentes</p>
+        <span class="color-badge green">🟢 Sucesso</span>
+      </div>
+      
+      <div class="feature-card" onclick="mostrarAvisos()">
+        <div class="card-icon info">
+          <i class="fas fa-bullhorn"></i>
+        </div>
+        <h3>Avisos & Comunicados</h3>
+        <p>Informações importantes</p>
+        <span class="badge" id="avisosCount" style="display:none">0</span>
+      </div>
+      
+      <div class="feature-card" onclick="mostrarDicasSeguranca()">
+        <div class="card-icon primary">
+          <i class="fas fa-lightbulb"></i>
+        </div>
+        <h3>DDS Diário</h3>
+        <p>Dicas de segurança do dia</p>
+        <span class="color-badge blue">🔵 Informação</span>
+      </div>
+      
+      <div class="feature-card whatsapp" onclick="abrirSuporteWhatsApp()">
+        <div class="card-icon whatsapp">
+          <i class="fab fa-whatsapp"></i>
+        </div>
+        <h3>Suporte WhatsApp</h3>
+        <p>Contato de suporte técnico</p>
+      </div>
+    </div>
+    
+    <div class="action-footer">
+      <button class="btn btn-secondary" onclick="logout()">
+        <i class="fas fa-sign-out-alt"></i> Sair
+      </button>
+    </div>
+  </section>
+
+  <!-- TELA: FORMULÁRIO INTERNO -->
+  <section id="tela-formulario-interno" class="tela hidden">
+    <div class="formulario-header">
+      <h2 id="formularioTitulo">Formulário</h2>
+      <p id="formularioDescricao">Preencha o formulário abaixo</p>
+    </div>
+    
+    <div class="formulario-container">
+      <div class="formulario-loading" id="formLoading">
+        <div class="loading-spinner"></div>
+        <p>Carregando formulário...</p>
+      </div>
+      <iframe 
+        id="formularioIframe" 
+        class="formulario-iframe" 
+        frameborder="0" 
+        allow="camera; microphone"
+        title="Formulário QSSMA"
+      ></iframe>
+    </div>
+  </section>
+
+  <!-- TELA: GESTOR LOGIN -->
+  <section id="tela-gestor-login" class="tela hidden">
+    <div class="section-header">
+      <h2><i class="fas fa-cogs"></i> Acesso Gestor</h2>
+      <p>Acesso administrativo do sistema QSSMA</p>
+    </div>
+    
+    <div class="auth-card">
+      <div class="auth-icon gestor">
+        <i class="fas fa-shield-alt"></i>
+      </div>
+      
+      <div class="form-group">
+        <label for="gestorEmail">
+          <i class="fas fa-envelope"></i> E-mail
+        </label>
+        <input type="email" id="gestorEmail" placeholder="seu@email.com" class="form-input" />
+      </div>
+      
+      <div class="form-group">
+        <label for="gestorSenha">
+          <i class="fas fa-lock"></i> Senha
+        </label>
+        <input type="password" id="gestorSenha" placeholder="Sua senha" class="form-input" />
+      </div>
+      
+      <button class="btn btn-primary btn-block" onclick="loginGestor()">
+        <i class="fas fa-sign-in-alt"></i> Entrar
+      </button>
+      
+      <div class="auth-footer">
+        <p><i class="fas fa-exclamation-circle"></i> Acesso restrito aos gestores</p>
+      </div>
+    </div>
+    
+    <div class="action-footer">
+      <button class="btn btn-secondary" onclick="mostrarTela('telaEscolhaPerfil')">
+        <i class="fas fa-arrow-left"></i> Voltar
+      </button>
+    </div>
+  </section>
+
+  <!-- TELA: GESTOR DASHBOARD -->
+  <section id="tela-gestor-dashboard" class="tela hidden">
+    <div class="section-header">
+      <h2><i class="fas fa-tachometer-alt"></i> Painel do Gestor</h2>
+      <p>Dashboard administrativo - Gestão QSSMA</p>
+    </div>
+    
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon primary">
+          <i class="fas fa-users"></i>
+        </div>
+        <div class="stat-content">
+          <h3 id="totalColaboradores">0</h3>
+          <p>Colaboradores</p>
+        </div>
+      </div>
+      
+      <div class="stat-card">
+        <div class="stat-icon warning">
+          <i class="fas fa-bullhorn"></i>
+        </div>
+        <div class="stat-content">
+          <h3 id="avisosAtivosCount">0</h3>
+          <p>Avisos Ativos</p>
+        </div>
+      </div>
+      
+      <div class="stat-card">
+        <div class="stat-icon info">
+          <i class="fas fa-shield-alt"></i>
+        </div>
+        <div class="stat-content">
+          <h3 id="usuariosOnline">0</h3>
+          <p>Usuários Online</p>
+        </div>
+      </div>
+    </div>
+    
+    <div class="dashboard-tabs">
+      <button class="dashboard-tab active" onclick="mostrarTab('avisos')">
+        <i class="fas fa-bullhorn"></i> Gerenciar Avisos
+      </button>
+      <button class="dashboard-tab" onclick="mostrarTab('colaboradores')">
+        <i class="fas fa-users"></i> Colaboradores
+      </button>
+      <button class="dashboard-tab" onclick="mostrarTab('relatorios')">
+        <i class="fas fa-chart-bar"></i> Relatórios
+      </button>
+    </div>
+    
+    <div class="tab-content active" id="tabAvisos">
+      <div class="tab-header">
+        <h3><i class="fas fa-bullhorn"></i> Gerenciar Avisos do Sistema</h3>
+      </div>
+      <div class="admin-actions">
+        <button class="btn btn-success" onclick="criarNovoAviso()">
+          <i class="fas fa-plus"></i> Novo Aviso
+        </button>
+      </div>
+      <div class="avisos-admin-container" id="avisosAdminList">
+        <div class="loading-state">
+          <i class="fas fa-spinner fa-spin"></i>
+          <p>Carregando avisos...</p>
+        </div>
+      </div>
+    </div>
+    
+    <div class="tab-content" id="tabColaboradores">
+      <div class="tab-header">
+        <h3><i class="fas fa-users"></i> Gestão de Colaboradores</h3>
+      </div>
+      <div class="info-card">
+        <h4><i class="fas fa-info-circle"></i> Informações</h4>
+        <p>Os colaboradores são gerenciados diretamente no Firebase Firestore na coleção "colaboradores".</p>
+        <p>Estrutura esperada por documento (matrícula como ID):</p>
+        <ul>
+          <li><strong>nome</strong>: Nome completo</li>
+          <li><strong>matricula</strong>: Matrícula (mesmo ID do documento)</li>
+          <li><strong>funcao</strong>: Função do colaborador</li>
+          <li><strong>setor</strong>: Setor (fixo: "Segurança")</li>
+          <li><strong>ativo</strong>: Boolean (true/false)</li>
+          <li><strong>email</strong>: E-mail (opcional)</li>
+        </ul>
+      </div>
+    </div>
+    
+    <div class="tab-content" id="tabRelatorios">
+      <div class="tab-header">
+        <h3><i class="fas fa-chart-bar"></i> Relatórios</h3>
+      </div>
+      <div class="relatorios-container">
+        <div class="info-card">
+          <h4><i class="fas fa-chart-pie"></i> Estatísticas do Sistema</h4>
+          <div class="stats-grid-small">
+            <div class="stat-item-small">
+              <div class="stat-number" id="statColaboradores">0</div>
+              <div class="stat-label">Colaboradores</div>
+            </div>
+            <div class="stat-item-small">
+              <div class="stat-number" id="statAvisos">0</div>
+              <div class="stat-label">Avisos Ativos</div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="admin-actions">
+          <button class="btn" onclick="exportarRelatorios()">
+            <i class="fas fa-file-export"></i> Exportar Relatórios
+          </button>
+          <button class="btn secondary" onclick="atualizarRelatorios()">
+            <i class="fas fa-sync"></i> Atualizar
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <div class="action-footer">
+      <button class="btn btn-secondary" onclick="logout()">
+        <i class="fas fa-sign-out-alt"></i> Sair
+      </button>
+    </div>
+  </section>
+
+</main>
+
+<!-- MODAL DE EMERGÊNCIA -->
+<div id="emergenciaModalBack" class="modal-back" aria-hidden="true" style="display:none">
+  <div class="modal emergencia-modal">
+    <button class="close" onclick="closeModal('emergenciaModalBack')" aria-label="Fechar">✕</button>
+    <div class="emergencia-header">
+      <div class="emergencia-icon">
+        <i class="fas fa-exclamation-triangle"></i>
+      </div>
+      <h3>🚨 EMERGÊNCIA 🚨</h3>
+    </div>
+    
+    <div class="emergencia-content">
+      <p><strong>Atendimento Imediato necessário?</strong></p>
+      <div class="emergencia-opcoes">
+        <button class="emergencia-opcao" onclick="ligarEmergencia('193')">
+          <div class="opcao-icon">
+            <i class="fas fa-fire"></i>
+          </div>
+          <h4>Bombeiros</h4>
+          <p>193</p>
+        </button>
+        
+        <button class="emergencia-opcao" onclick="ligarEmergencia('192')">
+          <div class="opcao-icon">
+            <i class="fas fa-ambulance"></i>
+          </div>
+          <h4>SAMU</h4>
+          <p>192</p>
+        </button>
+        
+        <button class="emergencia-opcao" onclick="ligarEmergencia('190')">
+          <div class="opcao-icon">
+            <i class="fas fa-shield-alt"></i>
+          </div>
+          <h4>Polícia</h4>
+          <p>190</p>
+        </button>
+        
+        <button class="emergencia-opcao whatsapp" onclick="abrirSuporteWhatsApp()">
+          <div class="opcao-icon">
+            <i class="fab fa-whatsapp"></i>
+          </div>
+          <h4>Suporte QSSMA</h4>
+          <p>WhatsApp</p>
+        </button>
+      </div>
+      
+      <div class="emergencia-info">
+        <p><i class="fas fa-info-circle"></i> Em caso de acidente, mantenha a calma e informe:</p>
+        <ul>
+          <li>Local exato do ocorrido</li>
+          <li>Número de pessoas envolvidas</li>
+          <li>Tipo de lesão/incidente</li>
+          <li>Se há riscos iminentes</li>
+        </ul>
+      </div>
+    </div>
+    
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('emergenciaModalBack')">
+        Cancelar
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DE DICAS DE SEGURANÇA -->
+<div id="dicasModalBack" class="modal-back" aria-hidden="true" style="display:none">
+  <div class="modal">
+    <button class="close" onclick="closeModal('dicasModalBack')" aria-label="Fechar">✕</button>
+    <h3><i class="fas fa-lightbulb"></i> DDS - Diálogo Diário de Segurança</h3>
+    
+    <div class="dds-container">
+      <div class="dds-header">
+        <span class="dds-data" id="ddsData">Hoje</span>
+        <span class="dds-tema" id="ddsTema">Segurança na Obra</span>
+      </div>
+      
+      <div class="dds-content">
+        <h4 id="ddsTitulo">Dica de Segurança do Dia</h4>
+        <div class="dds-mensagem" id="ddsMensagem">
+          <p>Sempre use seus EPIs corretamente. Verifique o estado de conservação antes de usar.</p>
+        </div>
+        
+        <div class="dds-checklist">
+          <h5><i class="fas fa-clipboard-check"></i> Checklist Diário:</h5>
+          <div class="checklist-item">
+            <input type="checkbox" id="check1">
+            <label for="check1">EPIs em bom estado</label>
+          </div>
+          <div class="checklist-item">
+            <input type="checkbox" id="check2">
+            <label for="check2">Área de trabalho organizada</label>
+          </div>
+          <div class="checklist-item">
+            <input type="checkbox" id="check3">
+            <label for="check3">Sinalização visível</label>
+          </div>
+          <div class="checklist-item">
+            <input type="checkbox" id="check4">
+            <label for="check4">Equipamentos verificados</label>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="modal-footer">
+      <button class="btn btn-primary" onclick="marcarDDSLido()">
+        <i class="fas fa-check"></i> Marcar como Lido
+      </button>
+      <button class="btn btn-secondary" onclick="closeModal('dicasModalBack')">
+        Fechar
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- LOADING OVERLAY -->
+<div id="loadingOverlay" class="loading-overlay" style="display:none">
+  <div class="loading-content">
+    <div class="loading-spinner"></div>
+    <p id="loadingText">Carregando...</p>
+  </div>
+</div>
+
+<!-- OFFLINE BANNER -->
+<div id="offlineBanner" class="offline-banner" style="display:none">
+  <i class="fas fa-wifi-slash"></i>
+  <span>Você está offline. Algumas funcionalidades podem não estar disponíveis.</span>
+</div>
+
+<script>
+  // Função para alternar entre tabs no gestor
+  function mostrarTab(tabId) {
+    document.querySelectorAll('.tab-content').forEach(tab => {
+      tab.classList.remove('active');
+    });
+    
+    document.querySelectorAll('.dashboard-tab').forEach(btn => {
+      btn.classList.remove('active');
+    });
+    
+    const tabElement = document.getElementById(`tab${tabId.charAt(0).toUpperCase() + tabId.slice(1)}`);
+    if (tabElement) {
+      tabElement.classList.add('active');
+    }
+    
+    if (event && event.target) {
+      event.target.classList.add('active');
+    }
+  }
+  
+  // Funções de modal
+  window.openModal = function(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+      modal.style.display = 'flex';
+    }
+  };
+  
+  window.closeModal = function(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+      modal.style.display = 'none';
+    }
+  };
+</script>
+
+<footer class="footer-dev">
+  <div class="footer-content">
+    <span>Desenvolvido por Juan Sales</span>
+    <div class="footer-contacts">
+      <a href="tel:+5594992233753"><i class="fas fa-phone"></i> (94) 99223-3753</a>
+      <a href="mailto:Juansalesadm@gmail.com"><i class="fas fa-envelope"></i> Juansalesadm@gmail.com</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
