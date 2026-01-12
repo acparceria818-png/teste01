@@ -1,27 +1,39 @@
-// service-worker.js - VERSÃO CORRIGIDA
-const CACHE_NAME = 'portal-qssma-v3-' + new Date().getTime();
+// service-worker.js - VERSÃO OTIMIZADA
+const CACHE_NAME = 'portal-qssma-v4-' + new Date().getTime();
 const CORE_ASSETS = [
   './',
   './index.html',
   './styles.css',
-  './app.js',
-  './firebase.js',
-  './manifest.json'
+  './manifest.json',
+  './assets/logo.jpg',
+  './assets/avatar.png'
+];
+
+// JS Modules (cache separado para atualizações)
+const JS_MODULES = [
+  './js/app.js',
+  './js/state.js',
+  './js/auth.js',
+  './js/avisos.js',
+  './js/dashboard.js',
+  './js/ui.js',
+  './js/theme.js',
+  './js/pwa.js',
+  './js/forms.js',
+  './js/notifications.js',
+  './js/emergency.js',
+  './js/utils.js',
+  './firebase.js'
 ];
 
 self.addEventListener('install', event => {
-  console.log('📦 Service Worker: Instalando Portal QSSMA...');
+  console.log('📦 Service Worker: Instalando...');
   
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => {
-        console.log('✅ Cache aberto:', CACHE_NAME);
-        return cache.addAll(CORE_ASSETS);
-      })
-      .then(() => {
-        console.log('🚀 Instalação completa');
-        return self.skipWaiting();
-      })
+    Promise.all([
+      caches.open(CACHE_NAME).then(cache => cache.addAll(CORE_ASSETS)),
+      caches.open(`${CACHE_NAME}-js`).then(cache => cache.addAll(JS_MODULES))
+    ]).then(() => self.skipWaiting())
   );
 });
 
@@ -29,112 +41,98 @@ self.addEventListener('activate', event => {
   console.log('✅ Service Worker: Ativando...');
   
   event.waitUntil(
-    caches.keys()
-      .then(cacheNames => {
-        return Promise.all(
-          cacheNames.map(cache => {
-            if (cache !== CACHE_NAME) {
-              console.log('🗑️ Removendo cache antigo:', cache);
-              return caches.delete(cache);
-            }
-          })
-        );
-      })
-      .then(() => self.clients.claim())
+    caches.keys().then(cacheNames => {
+      return Promise.all(
+        cacheNames.map(cache => {
+          if (cache !== CACHE_NAME && cache !== `${CACHE_NAME}-js`) {
+            console.log('🗑️ Removendo cache antigo:', cache);
+            return caches.delete(cache);
+          }
+        })
+      );
+    }).then(() => self.clients.claim())
   );
 });
 
 self.addEventListener('fetch', event => {
-  // Ignorar requisições que não são GET
-  if (event.request.method !== 'GET') {
-    return;
-  }
+  // Ignorar requisições não-GET
+  if (event.request.method !== 'GET') return;
   
-  // Ignorar requisições do Firebase
   const url = new URL(event.request.url);
+  
+  // Firebase/Google APIs - network only
   if (url.hostname.includes('firebase') || 
-      url.hostname.includes('googleapis')) {
+      url.hostname.includes('googleapis') ||
+      url.hostname.includes('google.com')) {
     return;
   }
   
-  event.respondWith(
-    caches.match(event.request)
-      .then(cachedResponse => {
-        // Retorna do cache se existir
-        if (cachedResponse) {
-          return cachedResponse;
-        }
-        
-        // Busca na rede
-        return fetch(event.request)
-          .then(networkResponse => {
-            // Verifica se a resposta é válida
-            if (!networkResponse || networkResponse.status !== 200) {
-              return networkResponse;
-            }
-            
-            // Clone a resposta para cache
-            const responseToCache = networkResponse.clone();
-            
-            // Cache apenas para nossos arquivos
-            if (url.origin === self.location.origin) {
-              caches.open(CACHE_NAME)
-                .then(cache => {
-                  cache.put(event.request, responseToCache);
-                });
-            }
-            
-            return networkResponse;
-          })
-          .catch(error => {
-            console.log('🌐 Offline - Erro na rede:', error);
-            
-            // Se for navegação, retorna index.html
-            if (event.request.mode === 'navigate') {
-              return caches.match('./index.html');
-            }
-          });
-      })
-  );
+  // Assets locais - cache first
+  if (url.pathname.endsWith('.js') || 
+      url.pathname.endsWith('.css') ||
+      url.pathname.includes('/assets/')) {
+    event.respondWith(cacheFirst(event.request));
+    return;
+  }
+  
+  // Páginas HTML - network first
+  event.respondWith(networkFirst(event.request));
 });
 
-self.addEventListener('push', event => {
-  console.log('📬 Push notification recebida');
+// Estratégia: Cache First
+async function cacheFirst(request) {
+  const cache = await caches.open(CACHE_NAME + (request.url.endsWith('.js') ? '-js' : ''));
+  const cached = await cache.match(request);
   
-  const options = {
-    body: 'Nova notificação do Portal QSSMA',
-    icon: './logo.jpg',
-    badge: './logo.jpg',
-    vibrate: [100, 50, 100],
-    data: {
-      url: './'
+  if (cached) {
+    return cached;
+  }
+  
+  try {
+    const response = await fetch(request);
+    if (response.status === 200) {
+      cache.put(request, response.clone());
     }
-  };
-  
-  event.waitUntil(
-    self.registration.showNotification('Portal QSSMA', options)
-  );
+    return response;
+  } catch (error) {
+    // Se offline e não tem cache, mostrar offline page
+    if (request.mode === 'navigate') {
+      return caches.match('./index.html');
+    }
+    throw error;
+  }
+}
+
+// Estratégia: Network First
+async function networkFirst(request) {
+  try {
+    const response = await fetch(request);
+    if (response.status === 200) {
+      const cache = await caches.open(CACHE_NAME);
+      cache.put(request, response.clone());
+    }
+    return response;
+  } catch (error) {
+    const cached = await caches.match(request);
+    if (cached) {
+      return cached;
+    }
+    
+    if (request.mode === 'navigate') {
+      return caches.match('./index.html');
+    }
+    
+    throw error;
+  }
+}
+
+// Background sync para dados offline
+self.addEventListener('sync', event => {
+  if (event.tag === 'sync-avisos') {
+    event.waitUntil(syncAvisos());
+  }
 });
 
-self.addEventListener('notificationclick', event => {
-  console.log('👆 Notificação clicada');
-  
-  event.notification.close();
-  
-  event.waitUntil(
-    clients.matchAll({ type: 'window' })
-      .then(windowClients => {
-        // Focar em janela existente
-        for (let client of windowClients) {
-          if (client.url === './' && 'focus' in client) {
-            return client.focus();
-          }
-        }
-        
-        // Abrir nova janela
-        if (clients.openWindow) {
-          return clients.openWindow('./');
-        }
-      })
-  );
-});
+async function syncAvisos() {
+  console.log('🔄 Sincronizando dados offline...');
+}
