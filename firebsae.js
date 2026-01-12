@@ -1,4 +1,4 @@
-// firebase.js - VERSÃO COMPLETA CORRIGIDA
+// firebase.js - ATUALIZADO COM SEGURANÇA
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { 
   getFirestore, 
@@ -20,11 +20,9 @@ import {
   getAuth, 
   signInWithEmailAndPassword,
   signOut,
-  createUserWithEmailAndPassword,
-  updateProfile
+  onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-// Configuração do Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyBdBJz8vNjr5LU2aP7aMymP2lf5rsosbwo",
   authDomain: "portal-qssma.firebaseapp.com",
@@ -44,36 +42,19 @@ const auth = getAuth(app);
 async function loginEmailSenha(email, senha) {
   try {
     const userCredential = await signInWithEmailAndPassword(auth, email, senha);
+    
+    // Verificar se o usuário tem permissão de gestor
+    const userDoc = await getDoc(doc(db, 'usuarios', userCredential.user.uid));
+    
+    if (!userDoc.exists() || userDoc.data().role !== 'gestor') {
+      await signOut(auth);
+      throw new Error('Acesso restrito aos gestores');
+    }
+    
     return userCredential.user;
   } catch (error) {
     throw new Error(getErrorMessage(error.code));
   }
-}
-
-async function criarUsuario(email, senha, nome) {
-  try {
-    const userCredential = await createUserWithEmailAndPassword(auth, email, senha);
-    await updateProfile(userCredential.user, {
-      displayName: nome
-    });
-    return userCredential.user;
-  } catch (error) {
-    throw new Error(getErrorMessage(error.code));
-  }
-}
-
-function getErrorMessage(errorCode) {
-  const messages = {
-    'auth/invalid-email': 'E-mail inválido',
-    'auth/user-disabled': 'Usuário desativado',
-    'auth/user-not-found': 'Usuário não encontrado',
-    'auth/wrong-password': 'Senha incorreta',
-    'auth/email-already-in-use': 'E-mail já está em uso',
-    'auth/weak-password': 'Senha muito fraca',
-    'auth/too-many-requests': 'Muitas tentativas. Tente novamente mais tarde',
-    'auth/operation-not-allowed': 'Operação não permitida'
-  };
-  return messages[errorCode] || 'Erro ao fazer login';
 }
 
 // ================= COLABORADORES =================
@@ -83,71 +64,79 @@ async function getColaborador(matricula) {
 }
 
 async function getTodosColaboradores() {
-  const snapshot = await getDocs(collection(db, 'colaboradores'));
+  const q = query(
+    collection(db, 'colaboradores'),
+    where('ativo', '==', true),
+    orderBy('nome')
+  );
+  const snapshot = await getDocs(q);
   return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-}
-
-async function criarColaborador(matricula, dados) {
-  const docRef = doc(db, 'colaboradores', matricula);
-  return await setDoc(docRef, {
-    ...dados,
-    criadoEm: serverTimestamp(),
-    ativo: true
-  });
-}
-
-async function atualizarColaborador(matricula, dados) {
-  const docRef = doc(db, 'colaboradores', matricula);
-  return await updateDoc(docRef, {
-    ...dados,
-    atualizadoEm: serverTimestamp()
-  });
 }
 
 // ================= AVISOS =================
 async function registrarAviso(dados) {
+  // Verificar se o usuário é gestor
+  const user = auth.currentUser;
+  if (!user) throw new Error('Usuário não autenticado');
+  
+  const userDoc = await getDoc(doc(db, 'usuarios', user.uid));
+  if (!userDoc.exists() || userDoc.data().role !== 'gestor') {
+    throw new Error('Acesso negado. Apenas gestores podem criar avisos.');
+  }
+  
   return await addDoc(collection(db, 'avisos'), {
     ...dados,
     timestamp: serverTimestamp(),
-    criadoPor: auth.currentUser?.email || 'Sistema'
+    criadoPor: user.email,
+    criadoPorUid: user.uid
   });
 }
 
 async function getAvisos() {
-  const q = query(collection(db, 'avisos'), orderBy('timestamp', 'desc'));
+  const q = query(
+    collection(db, 'avisos'),
+    orderBy('timestamp', 'desc')
+  );
   const snapshot = await getDocs(q);
   return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
 async function updateAviso(avisoId, dados) {
+  const user = auth.currentUser;
+  if (!user) throw new Error('Usuário não autenticado');
+  
+  const userDoc = await getDoc(doc(db, 'usuarios', user.uid));
+  if (!userDoc.exists() || userDoc.data().role !== 'gestor') {
+    throw new Error('Acesso negado. Apenas gestores podem editar avisos.');
+  }
+  
   const docRef = doc(db, 'avisos', avisoId);
   return await updateDoc(docRef, {
     ...dados,
     atualizadoEm: serverTimestamp(),
-    atualizadoPor: auth.currentUser?.email || 'Sistema'
+    atualizadoPor: user.email
   });
 }
 
 async function deleteAviso(avisoId) {
+  const user = auth.currentUser;
+  if (!user) throw new Error('Usuário não autenticado');
+  
+  const userDoc = await getDoc(doc(db, 'usuarios', user.uid));
+  if (!userDoc.exists() || userDoc.data().role !== 'gestor') {
+    throw new Error('Acesso negado. Apenas gestores podem excluir avisos.');
+  }
+  
   const docRef = doc(db, 'avisos', avisoId);
   return await deleteDoc(docRef);
 }
 
 // ================= MONITORAMENTO =================
 function monitorarAvisos(callback) {
-  const q = query(collection(db, 'avisos'), 
-    where("ativo", "==", true),
+  const q = query(
+    collection(db, 'avisos'), 
+    where('ativo', '==', true),
     orderBy('timestamp', 'desc')
-  );
-  return onSnapshot(q, snapshot => {
-    const dados = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-    callback(dados);
-  });
-}
-
-function monitorarColaboradores(callback) {
-  const q = query(collection(db, 'colaboradores'),
-    where("ativo", "==", true)
   );
   return onSnapshot(q, snapshot => {
     const dados = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -163,10 +152,13 @@ async function getEstatisticasDashboard() {
       getDocs(query(collection(db, 'colaboradores'), where('ativo', '==', true)))
     ]);
 
+    // Contar usuários online (simplificado - em produção use presence system)
+    const usuariosOnline = auth.currentUser ? 1 : 0;
+
     return {
       totalAvisosAtivos: avisosSnapshot.docs.length,
       totalColaboradores: colaboradoresSnapshot.docs.length,
-      usuariosOnline: 0 // Será implementado depois
+      usuariosOnline
     };
   } catch (error) {
     console.error('Erro ao carregar estatísticas:', error);
@@ -178,33 +170,25 @@ async function getEstatisticasDashboard() {
   }
 }
 
+// ================= LISTENER DE AUTENTICAÇÃO =================
+onAuthStateChanged(auth, (user) => {
+  console.log('Auth state changed:', user ? 'Logged in' : 'Logged out');
+});
+
 // ================= EXPORTAÇÕES =================
 export {
   db,
   auth,
   doc,
   getDoc,
-  setDoc,
-  updateDoc,
-  deleteDoc,
-  collection,
-  addDoc,
-  getDocs,
-  query,
-  where,
-  orderBy,
-  serverTimestamp,
   
   // Autenticação
   loginEmailSenha,
-  criarUsuario,
   signOut,
   
   // Colaboradores
   getColaborador,
   getTodosColaboradores,
-  criarColaborador,
-  atualizarColaborador,
   
   // Avisos
   registrarAviso,
@@ -214,7 +198,6 @@ export {
   
   // Monitoramento
   monitorarAvisos,
-  monitorarColaboradores,
   
   // Dashboard
   getEstatisticasDashboard
