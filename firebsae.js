@@ -3,10 +3,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
 import { 
   getFirestore, 
   doc, 
-  getDoc, 
-  setDoc,
-  updateDoc,
-  deleteDoc,
+  getDoc,
   collection,
   onSnapshot,
   query,
@@ -14,7 +11,9 @@ import {
   getDocs,
   addDoc,
   serverTimestamp,
-  orderBy
+  orderBy,
+  updateDoc,
+  deleteDoc
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 import { 
@@ -44,6 +43,7 @@ async function loginEmailSenha(email, senha) {
     const userCredential = await signInWithEmailAndPassword(auth, email, senha);
     return userCredential.user;
   } catch (error) {
+    console.error('Erro login:', error.code);
     throw new Error(getErrorMessage(error.code));
   }
 }
@@ -65,28 +65,6 @@ async function getColaborador(matricula) {
   return await getDoc(docRef);
 }
 
-// ================= REGISTROS QSSMA =================
-async function registrarEvento(dados) {
-  return await addDoc(collection(db, 'eventos'), {
-    ...dados,
-    timestamp: serverTimestamp()
-  });
-}
-
-async function registrarFlashReport(dados) {
-  return await addDoc(collection(db, 'flash_reports'), {
-    ...dados,
-    timestamp: serverTimestamp()
-  });
-}
-
-async function registrarRadarVelocidade(dados) {
-  return await addDoc(collection(db, 'radar_velocidade'), {
-    ...dados,
-    timestamp: serverTimestamp()
-  });
-}
-
 // ================= AVISOS =================
 async function registrarAviso(dados) {
   return await addDoc(collection(db, 'avisos'), {
@@ -96,9 +74,14 @@ async function registrarAviso(dados) {
 }
 
 async function getAvisos() {
-  const q = query(collection(db, 'avisos'), orderBy('timestamp', 'desc'));
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+  try {
+    const q = query(collection(db, 'avisos'), orderBy('timestamp', 'desc'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (error) {
+    console.error('Erro ao buscar avisos:', error);
+    return [];
+  }
 }
 
 async function updateAviso(avisoId, dados) {
@@ -116,33 +99,40 @@ async function deleteAviso(avisoId) {
 
 // ================= MONITORAMENTO =================
 function monitorarAvisos(callback) {
-  const q = query(collection(db, 'avisos'), where("ativo", "==", true));
-  return onSnapshot(q, snapshot => {
-    const dados = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-    callback(dados);
-  });
+  try {
+    const q = query(collection(db, 'avisos'), where("ativo", "==", true));
+    return onSnapshot(q, snapshot => {
+      const dados = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      callback(dados);
+    }, error => {
+      console.error('Erro monitoramento avisos:', error);
+    });
+  } catch (error) {
+    console.error('Erro ao configurar monitoramento:', error);
+  }
 }
 
 // ================= ESTATÍSTICAS =================
 async function getEstatisticasDashboard() {
   try {
-    const [avisosSnapshot, eventosSnapshot] = await Promise.all([
-      getDocs(collection(db, 'avisos')),
-      getDocs(collection(db, 'eventos'))
+    const [avisosSnapshot, eventosSnapshot, colaboradoresSnapshot] = await Promise.all([
+      getDocs(query(collection(db, 'avisos'), where("ativo", "==", true))),
+      getDocs(collection(db, 'eventos')),
+      getDocs(collection(db, 'colaboradores'))
     ]);
 
     const hoje = new Date();
-    const inicioDia = new Date(hoje.setHours(0, 0, 0, 0));
+    hoje.setHours(0, 0, 0, 0);
     
     const eventosHoje = eventosSnapshot.docs.filter(doc => {
       const data = doc.data().timestamp?.toDate();
-      return data && data >= inicioDia;
+      return data && data >= hoje;
     }).length;
 
     return {
-      totalAvisos: avisosSnapshot.docs.length,
+      totalAvisos: avisosSnapshot.size,
       eventosHoje: eventosHoje,
-      totalColaboradores: await getTotalColaboradores()
+      totalColaboradores: colaboradoresSnapshot.size
     };
   } catch (error) {
     console.error('Erro ao buscar estatísticas:', error);
@@ -150,33 +140,16 @@ async function getEstatisticasDashboard() {
   }
 }
 
-async function getTotalColaboradores() {
-  const snapshot = await getDocs(collection(db, 'colaboradores'));
-  return snapshot.docs.length;
-}
-
 // ================= EXPORTAÇÕES =================
 export {
   db,
   auth,
-  doc,
-  getDoc,
-  collection,
-  getDocs,
-  query,
-  where,
-  orderBy,
-  serverTimestamp,
   getColaborador,
   loginEmailSenha,
-  registrarEvento,
-  registrarFlashReport,
-  registrarRadarVelocidade,
   registrarAviso,
   getAvisos,
   updateAviso,
   deleteAviso,
   monitorarAvisos,
-  getEstatisticasDashboard,
-  getTotalColaboradores
+  getEstatisticasDashboard
 };
