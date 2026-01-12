@@ -1,49 +1,16 @@
 {
   "name": "Portal QSSMA",
   "short_name": "QSSMA",
-  "description": "Sistema de Gestão em Segurança - Diálogos Diários, Registros e Emergências",
+  "description": "Portal de Segurança, Saúde e Meio Ambiente",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#b00000",
   "orientation": "portrait",
-  "categories": ["business", "productivity", "security", "health"],
+  "categories": ["business", "productivity", "health"],
   "icons": [
-    { 
-      "src": "logo.jpg", 
-      "sizes": "192x192", 
-      "type": "image/jpeg",
-      "purpose": "any maskable"
-    },
-    { 
-      "src": "logo.jpg", 
-      "sizes": "512x512", 
-      "type": "image/jpeg",
-      "purpose": "any maskable"
-    }
+    { "src": "logo.jpg", "sizes": "192x192", "type": "image/jpeg" },
+    { "src": "logo.jpg", "sizes": "512x512", "type": "image/jpeg" }
   ],
-  "screenshots": [
-    {
-      "src": "screenshot1.jpg",
-      "sizes": "1280x720",
-      "type": "image/jpeg",
-      "form_factor": "wide"
-    }
-  ],
-  "shortcuts": [
-    {
-      "name": "Nova Emergência",
-      "short_name": "SOS",
-      "description": "Abrir emergência rapidamente",
-      "url": "/?emergencia",
-      "icons": [{ "src": "emergency-icon.jpg", "sizes": "96x96" }]
-    },
-    {
-      "name": "Informe de Evento",
-      "short_name": "Evento",
-      "description": "Registrar evento de segurança",
-      "url": "/?evento",
-      "icons": [{ "src": "event-icon.jpg", "sizes": "96x96" }]
-    }
-  ]
+  "permissions": ["notifications"]
 }
