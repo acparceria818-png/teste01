@@ -1,16 +1,19 @@
-// service-worker.js - VERSÃO CORRIGIDA
-const CACHE_NAME = 'portal-qssma-v3-' + new Date().getTime();
+// service-worker.js - Portal QSSMA
+const CACHE_NAME = 'portal-qssma-v1-' + new Date().getTime();
 const CORE_ASSETS = [
   './',
   './index.html',
   './styles.css',
   './app.js',
   './firebase.js',
-  './manifest.json'
+  './manifest.json',
+  'logo.jpg',
+  'avatar.png'
 ];
 
+// ========== INSTALAÇÃO ==========
 self.addEventListener('install', event => {
-  console.log('📦 Service Worker: Instalando Portal QSSMA...');
+  console.log('📦 Service Worker: Instalando...');
   
   event.waitUntil(
     caches.open(CACHE_NAME)
@@ -22,9 +25,13 @@ self.addEventListener('install', event => {
         console.log('🚀 Instalação completa');
         return self.skipWaiting();
       })
+      .catch(error => {
+        console.error('❌ Erro na instalação:', error);
+      })
   );
 });
 
+// ========== ATIVAÇÃO ==========
 self.addEventListener('activate', event => {
   console.log('✅ Service Worker: Ativando...');
   
@@ -40,44 +47,40 @@ self.addEventListener('activate', event => {
           })
         );
       })
-      .then(() => self.clients.claim())
+      .then(() => {
+        console.log('🎯 Claiming clients');
+        return self.clients.claim();
+      })
   );
 });
 
+// ========== FETCH ==========
 self.addEventListener('fetch', event => {
+  const url = new URL(event.request.url);
+  
   // Ignorar requisições que não são GET
-  if (event.request.method !== 'GET') {
-    return;
-  }
+  if (event.request.method !== 'GET') return;
   
   // Ignorar requisições do Firebase
-  const url = new URL(event.request.url);
-  if (url.hostname.includes('firebase') || 
-      url.hostname.includes('googleapis')) {
-    return;
-  }
+  if (url.hostname.includes('firebase') || url.hostname.includes('googleapis')) return;
+  
+  // Ignorar formulários Google
+  if (url.hostname.includes('google.com')) return;
   
   event.respondWith(
     caches.match(event.request)
       .then(cachedResponse => {
-        // Retorna do cache se existir
+        // Retornar do cache se disponível
         if (cachedResponse) {
           return cachedResponse;
         }
         
-        // Busca na rede
+        // Buscar na rede
         return fetch(event.request)
           .then(networkResponse => {
-            // Verifica se a resposta é válida
-            if (!networkResponse || networkResponse.status !== 200) {
-              return networkResponse;
-            }
-            
-            // Clone a resposta para cache
-            const responseToCache = networkResponse.clone();
-            
-            // Cache apenas para nossos arquivos
+            // Cachear apenas recursos locais
             if (url.origin === self.location.origin) {
+              const responseToCache = networkResponse.clone();
               caches.open(CACHE_NAME)
                 .then(cache => {
                   cache.put(event.request, responseToCache);
@@ -86,55 +89,64 @@ self.addEventListener('fetch', event => {
             
             return networkResponse;
           })
-          .catch(error => {
-            console.log('🌐 Offline - Erro na rede:', error);
-            
-            // Se for navegação, retorna index.html
+          .catch(() => {
+            // Fallback para página offline
             if (event.request.mode === 'navigate') {
               return caches.match('./index.html');
             }
+            
+            return new Response('Conteúdo offline', {
+              status: 503,
+              statusText: 'Service Unavailable'
+            });
           });
       })
   );
 });
 
+// ========== PUSH NOTIFICATIONS ==========
 self.addEventListener('push', event => {
-  console.log('📬 Push notification recebida');
-  
   const options = {
     body: 'Nova notificação do Portal QSSMA',
     icon: './logo.jpg',
     badge: './logo.jpg',
     vibrate: [100, 50, 100],
-    data: {
-      url: './'
-    }
+    data: { url: './' }
   };
+  
+  if (event.data) {
+    try {
+      const data = event.data.json();
+      options.body = data.body || options.body;
+      options.data = { ...options.data, ...data };
+    } catch (e) {
+      options.body = event.data.text();
+    }
+  }
   
   event.waitUntil(
     self.registration.showNotification('Portal QSSMA', options)
   );
 });
 
+// ========== NOTIFICATION CLICK ==========
 self.addEventListener('notificationclick', event => {
-  console.log('👆 Notificação clicada');
-  
   event.notification.close();
   
   event.waitUntil(
     clients.matchAll({ type: 'window' })
       .then(windowClients => {
-        // Focar em janela existente
         for (let client of windowClients) {
           if (client.url === './' && 'focus' in client) {
             return client.focus();
           }
         }
         
-        // Abrir nova janela
         if (clients.openWindow) {
           return clients.openWindow('./');
         }
       })
   );
 });
+
+console.log('✅ Service Worker carregado');
