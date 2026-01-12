@@ -1,4 +1,4 @@
-// firebase.js - VERSÃO COMPLETA CORRIGIDA
+// firebase.js - Configuração para Portal QSSMA
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { 
   getFirestore, 
@@ -16,12 +16,10 @@ import {
   serverTimestamp,
   orderBy
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
 import { 
   getAuth, 
-  signInWithEmailAndPassword,
-  signOut,
-  createUserWithEmailAndPassword,
-  updateProfile
+  signInWithEmailAndPassword 
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 // Configuração do Firebase
@@ -50,28 +48,13 @@ async function loginEmailSenha(email, senha) {
   }
 }
 
-async function criarUsuario(email, senha, nome) {
-  try {
-    const userCredential = await createUserWithEmailAndPassword(auth, email, senha);
-    await updateProfile(userCredential.user, {
-      displayName: nome
-    });
-    return userCredential.user;
-  } catch (error) {
-    throw new Error(getErrorMessage(error.code));
-  }
-}
-
 function getErrorMessage(errorCode) {
   const messages = {
     'auth/invalid-email': 'E-mail inválido',
     'auth/user-disabled': 'Usuário desativado',
     'auth/user-not-found': 'Usuário não encontrado',
     'auth/wrong-password': 'Senha incorreta',
-    'auth/email-already-in-use': 'E-mail já está em uso',
-    'auth/weak-password': 'Senha muito fraca',
-    'auth/too-many-requests': 'Muitas tentativas. Tente novamente mais tarde',
-    'auth/operation-not-allowed': 'Operação não permitida'
+    'auth/too-many-requests': 'Muitas tentativas. Tente novamente mais tarde'
   };
   return messages[errorCode] || 'Erro ao fazer login';
 }
@@ -82,25 +65,25 @@ async function getColaborador(matricula) {
   return await getDoc(docRef);
 }
 
-async function getTodosColaboradores() {
-  const snapshot = await getDocs(collection(db, 'colaboradores'));
-  return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-}
-
-async function criarColaborador(matricula, dados) {
-  const docRef = doc(db, 'colaboradores', matricula);
-  return await setDoc(docRef, {
+// ================= REGISTROS QSSMA =================
+async function registrarEvento(dados) {
+  return await addDoc(collection(db, 'eventos'), {
     ...dados,
-    criadoEm: serverTimestamp(),
-    ativo: true
+    timestamp: serverTimestamp()
   });
 }
 
-async function atualizarColaborador(matricula, dados) {
-  const docRef = doc(db, 'colaboradores', matricula);
-  return await updateDoc(docRef, {
+async function registrarFlashReport(dados) {
+  return await addDoc(collection(db, 'flash_reports'), {
     ...dados,
-    atualizadoEm: serverTimestamp()
+    timestamp: serverTimestamp()
+  });
+}
+
+async function registrarRadarVelocidade(dados) {
+  return await addDoc(collection(db, 'radar_velocidade'), {
+    ...dados,
+    timestamp: serverTimestamp()
   });
 }
 
@@ -108,8 +91,7 @@ async function atualizarColaborador(matricula, dados) {
 async function registrarAviso(dados) {
   return await addDoc(collection(db, 'avisos'), {
     ...dados,
-    timestamp: serverTimestamp(),
-    criadoPor: auth.currentUser?.email || 'Sistema'
+    timestamp: serverTimestamp()
   });
 }
 
@@ -123,8 +105,7 @@ async function updateAviso(avisoId, dados) {
   const docRef = doc(db, 'avisos', avisoId);
   return await updateDoc(docRef, {
     ...dados,
-    atualizadoEm: serverTimestamp(),
-    atualizadoPor: auth.currentUser?.email || 'Sistema'
+    timestamp: serverTimestamp()
   });
 }
 
@@ -135,20 +116,7 @@ async function deleteAviso(avisoId) {
 
 // ================= MONITORAMENTO =================
 function monitorarAvisos(callback) {
-  const q = query(collection(db, 'avisos'), 
-    where("ativo", "==", true),
-    orderBy('timestamp', 'desc')
-  );
-  return onSnapshot(q, snapshot => {
-    const dados = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-    callback(dados);
-  });
-}
-
-function monitorarColaboradores(callback) {
-  const q = query(collection(db, 'colaboradores'),
-    where("ativo", "==", true)
-  );
+  const q = query(collection(db, 'avisos'), where("ativo", "==", true));
   return onSnapshot(q, snapshot => {
     const dados = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
     callback(dados);
@@ -158,24 +126,33 @@ function monitorarColaboradores(callback) {
 // ================= ESTATÍSTICAS =================
 async function getEstatisticasDashboard() {
   try {
-    const [avisosSnapshot, colaboradoresSnapshot] = await Promise.all([
-      getDocs(query(collection(db, 'avisos'), where('ativo', '==', true))),
-      getDocs(query(collection(db, 'colaboradores'), where('ativo', '==', true)))
+    const [avisosSnapshot, eventosSnapshot] = await Promise.all([
+      getDocs(collection(db, 'avisos')),
+      getDocs(collection(db, 'eventos'))
     ]);
 
+    const hoje = new Date();
+    const inicioDia = new Date(hoje.setHours(0, 0, 0, 0));
+    
+    const eventosHoje = eventosSnapshot.docs.filter(doc => {
+      const data = doc.data().timestamp?.toDate();
+      return data && data >= inicioDia;
+    }).length;
+
     return {
-      totalAvisosAtivos: avisosSnapshot.docs.length,
-      totalColaboradores: colaboradoresSnapshot.docs.length,
-      usuariosOnline: 0 // Será implementado depois
+      totalAvisos: avisosSnapshot.docs.length,
+      eventosHoje: eventosHoje,
+      totalColaboradores: await getTotalColaboradores()
     };
   } catch (error) {
-    console.error('Erro ao carregar estatísticas:', error);
-    return {
-      totalAvisosAtivos: 0,
-      totalColaboradores: 0,
-      usuariosOnline: 0
-    };
+    console.error('Erro ao buscar estatísticas:', error);
+    return { totalAvisos: 0, eventosHoje: 0, totalColaboradores: 0 };
   }
+}
+
+async function getTotalColaboradores() {
+  const snapshot = await getDocs(collection(db, 'colaboradores'));
+  return snapshot.docs.length;
 }
 
 // ================= EXPORTAÇÕES =================
@@ -184,38 +161,22 @@ export {
   auth,
   doc,
   getDoc,
-  setDoc,
-  updateDoc,
-  deleteDoc,
   collection,
-  addDoc,
   getDocs,
   query,
   where,
   orderBy,
   serverTimestamp,
-  
-  // Autenticação
-  loginEmailSenha,
-  criarUsuario,
-  signOut,
-  
-  // Colaboradores
   getColaborador,
-  getTodosColaboradores,
-  criarColaborador,
-  atualizarColaborador,
-  
-  // Avisos
+  loginEmailSenha,
+  registrarEvento,
+  registrarFlashReport,
+  registrarRadarVelocidade,
   registrarAviso,
   getAvisos,
   updateAviso,
   deleteAviso,
-  
-  // Monitoramento
   monitorarAvisos,
-  monitorarColaboradores,
-  
-  // Dashboard
-  getEstatisticasDashboard
+  getEstatisticasDashboard,
+  getTotalColaboradores
 };
