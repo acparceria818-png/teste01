@@ -1,0 +1,600 @@
+/* ========== VARIÁVEIS CSS ========== */
+:root {
+  /* Cores principais QSSMA */
+  --primary: #b00000;
+  --primary-dark: #8a0000;
+  --primary-light: #ff5252;
+  --secondary: #2c3e50;
+  --secondary-dark: #1a252f;
+  --success: #27ae60;
+  --success-dark: #219653;
+  --warning: #f39c12;
+  --warning-dark: #e67e22;
+  --danger: #e74c3c;
+  --danger-dark: #c0392b;
+  --info: #3498db;
+  --info-dark: #2980b9;
+  --whatsapp: #25D366;
+  --whatsapp-dark: #128C7E;
+  
+  /* Cores de segurança */
+  --cor-vermelha: #e74c3c;
+  --cor-amarela: #f1c40f;
+  --cor-verde: #2ecc71;
+  --cor-azul: #3498db;
+  --cor-roxo: #9b59b6;
+  
+  /* Cores neutras */
+  --light: #f8f9fa;
+  --dark: #343a40;
+  --gray: #6c757d;
+  --gray-light: #e9ecef;
+  --white: #ffffff;
+  --black: #000000;
+  
+  /* Modo Externo */
+  --externo-fundo: #ffffff;
+  --externo-texto: #000000;
+  --externo-borda: #000000;
+  --externo-fundo-alt: #000000;
+  --externo-texto-alt: #ffff00;
+  
+  /* Sombras */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.12);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  
+  /* Layout */
+  --header-height: 60px;
+  --max-width: 1200px;
+}
+
+/* ========== MODO EXTERNO (ALTO CONTRASTE) ========== */
+body.modo-externo {
+  --light: var(--externo-fundo);
+  --dark: var(--externo-texto);
+  --gray: var(--externo-texto);
+  --gray-light: #e0e0e0;
+  --white: var(--externo-fundo);
+  --black: var(--externo-texto);
+  
+  background: var(--externo-fundo) !important;
+  color: var(--externo-texto) !important;
+}
+
+body.modo-externo header {
+  background: var(--externo-texto) !important;
+  color: var(--externo-fundo) !important;
+  border-bottom: 3px solid var(--externo-texto);
+}
+
+body.modo-externo .card,
+body.modo-externo .auth-card,
+body.modo-externo .feature-card,
+body.modo-externo .profile-card,
+body.modo-externo .status-card,
+body.modo-externo .modal {
+  background: var(--externo-fundo) !important;
+  color: var(--externo-texto) !important;
+  border: 2px solid var(--externo-texto) !important;
+}
+
+body.modo-externo .btn {
+  border: 2px solid var(--externo-texto) !important;
+  font-weight: bold !important;
+}
+
+body.modo-externo .btn-primary {
+  background: var(--externo-texto) !important;
+  color: var(--externo-fundo) !important;
+}
+
+body.modo-externo .form-input {
+  background: var(--externo-fundo) !important;
+  color: var(--externo-texto) !important;
+  border: 2px solid var(--externo-texto) !important;
+  font-weight: bold;
+}
+
+body.modo-externo .panic-btn {
+  background: #ff0000 !important;
+  color: #ffff00 !important;
+  border: 3px solid #000000 !important;
+  font-weight: bold;
+  animation: piscar 1s infinite;
+}
+
+@keyframes piscar {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* MODO EXTERNO ALTERNATIVO (FUNDO PRETO) */
+body.modo-externo.alternativo {
+  --externo-fundo: #000000;
+  --externo-texto: #ffff00;
+  --externo-borda: #ffff00;
+}
+
+/* ========== BOTÃO FLUTUANTE DE PÂNICO ========== */
+.panic-btn {
+  position: fixed;
+  bottom: 80px;
+  right: 20px;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ff0000, #cc0000);
+  color: white;
+  border: 3px solid white;
+  box-shadow: 0 4px 15px rgba(255, 0, 0, 0.4);
+  cursor: pointer;
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  transition: all 0.3s;
+  animation: pulsar 2s infinite;
+}
+
+.panic-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 20px rgba(255, 0, 0, 0.6);
+}
+
+.panic-label {
+  font-size: 10px;
+  font-weight: bold;
+  margin-top: 2px;
+}
+
+@keyframes pulsar {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+/* ========== BOTÃO MODO EXTERNO ========== */
+.external-mode-btn {
+  position: fixed;
+  bottom: 150px;
+  right: 20px;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ffcc00, #ff9900);
+  color: #000;
+  border: 2px solid #000;
+  box-shadow: var(--shadow-md);
+  cursor: pointer;
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  transition: all 0.3s;
+}
+
+.external-mode-btn:hover {
+  transform: scale(1.1);
+  background: linear-gradient(135deg, #ff9900, #ff6600);
+}
+
+/* ========== BOTÃO VOLTAR FORMULÁRIO ========== */
+.back-from-form-btn {
+  position: fixed;
+  top: 80px;
+  left: 20px;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 25px;
+  padding: 10px 20px;
+  box-shadow: var(--shadow-md);
+  cursor: pointer;
+  z-index: 1000;
+  display: none;
+  align-items: center;
+  gap: 8px;
+  font-weight: bold;
+  transition: all 0.3s;
+}
+
+.back-from-form-btn.visible {
+  display: flex;
+}
+
+.back-from-form-btn:hover {
+  background: var(--primary-dark);
+  transform: translateX(-5px);
+}
+
+/* ========== TELA DE FORMULÁRIO INTERNO ========== */
+#tela-formulario-interno {
+  padding: 0;
+}
+
+.formulario-header {
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: white;
+  padding: 15px 20px;
+  text-align: center;
+}
+
+.formulario-container {
+  height: calc(100vh - 150px);
+  position: relative;
+}
+
+.formulario-loading {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.9);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.formulario-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: white;
+}
+
+/* ========== ALERTA PWA ========== */
+.pwa-alert-card {
+  background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+  border-left: 4px solid var(--info);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  margin: 15px 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: var(--shadow-sm);
+}
+
+.pwa-alert-icon {
+  color: var(--info);
+  font-size: 20px;
+}
+
+.pwa-alert-content {
+  flex: 1;
+}
+
+.pwa-alert-content small {
+  display: block;
+  margin-top: 4px;
+  color: var(--gray);
+  font-size: 12px;
+}
+
+/* ========== BADGES DE CORES DE SEGURANÇA ========== */
+.color-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: bold;
+  margin-top: 5px;
+}
+
+.color-badge.red {
+  background: rgba(231, 76, 60, 0.1);
+  color: var(--danger);
+  border: 1px solid var(--danger);
+}
+
+.color-badge.yellow {
+  background: rgba(241, 196, 15, 0.1);
+  color: #d35400;
+  border: 1px solid var(--warning);
+}
+
+.color-badge.green {
+  background: rgba(46, 204, 113, 0.1);
+  color: var(--success);
+  border: 1px solid var(--success);
+}
+
+.color-badge.blue {
+  background: rgba(52, 152, 219, 0.1);
+  color: var(--info);
+  border: 1px solid var(--info);
+}
+
+/* ========== CARDS COM CORES DE SEGURANÇA ========== */
+.card-icon.danger {
+  background: linear-gradient(135deg, var(--danger), var(--danger-dark));
+}
+
+.card-icon.warning {
+  background: linear-gradient(135deg, var(--warning), var(--warning-dark));
+}
+
+.card-icon.success {
+  background: linear-gradient(135deg, var(--success), var(--success-dark));
+}
+
+.card-icon.info {
+  background: linear-gradient(135deg, var(--info), var(--info-dark));
+}
+
+.card-icon.whatsapp {
+  background: linear-gradient(135deg, var(--whatsapp), var(--whatsapp-dark));
+}
+
+/* ========== MODAL DE EMERGÊNCIA ========== */
+.emergencia-modal {
+  max-width: 500px;
+}
+
+.emergencia-header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.emergencia-icon {
+  width: 60px;
+  height: 60px;
+  background: linear-gradient(135deg, #ff0000, #cc0000);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 10px;
+  font-size: 24px;
+  color: white;
+  animation: pulsar 1.5s infinite;
+}
+
+.emergencia-opcoes {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin: 20px 0;
+}
+
+.emergencia-opcao {
+  background: var(--white);
+  border: 2px solid var(--gray-light);
+  border-radius: var(--radius-md);
+  padding: 15px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.emergencia-opcao:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--primary);
+}
+
+.emergencia-opcao.whatsapp {
+  border-color: var(--whatsapp);
+}
+
+.emergencia-opcao.whatsapp:hover {
+  background: var(--whatsapp);
+  color: white;
+}
+
+.opcao-icon {
+  font-size: 24px;
+  margin-bottom: 8px;
+  color: var(--primary);
+}
+
+.emergencia-opcao.whatsapp .opcao-icon {
+  color: var(--whatsapp);
+}
+
+.emergencia-info {
+  background: var(--gray-light);
+  border-radius: var(--radius-md);
+  padding: 15px;
+  margin-top: 20px;
+  font-size: 14px;
+}
+
+.emergencia-info ul {
+  margin: 10px 0 0 20px;
+}
+
+/* ========== MODAL DDS ========== */
+.dds-container {
+  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  margin: 15px 0;
+}
+
+.dds-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--primary-light);
+}
+
+.dds-data {
+  background: var(--primary);
+  color: white;
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.dds-tema {
+  color: var(--primary);
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.dds-content h4 {
+  color: var(--secondary);
+  margin-bottom: 10px;
+}
+
+.dds-mensagem {
+  background: white;
+  border-radius: var(--radius-md);
+  padding: 15px;
+  margin-bottom: 20px;
+  border-left: 4px solid var(--success);
+}
+
+.dds-checklist {
+  background: white;
+  border-radius: var(--radius-md);
+  padding: 15px;
+}
+
+.dds-checklist h5 {
+  margin-bottom: 10px;
+  color: var(--secondary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.checklist-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--gray-light);
+}
+
+.checklist-item:last-child {
+  border-bottom: none;
+}
+
+.checklist-item input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+}
+
+.checklist-item label {
+  flex: 1;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+/* ========== AJUSTES DE CONTRASTE ========== */
+.auth-help {
+  background: rgba(255, 0, 0, 0.1);
+  border-left: 3px solid var(--danger);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--danger-dark);
+  font-weight: bold;
+}
+
+/* ========== BOTÃO DE CONTRASTE ========== */
+#contrastToggle {
+  margin-left: 8px;
+}
+
+/* ========== RESPONSIVIDADE ========== */
+@media (max-width: 768px) {
+  .panic-btn {
+    bottom: 70px;
+    right: 15px;
+    width: 55px;
+    height: 55px;
+    font-size: 18px;
+  }
+  
+  .external-mode-btn {
+    bottom: 135px;
+    right: 15px;
+    width: 45px;
+    height: 45px;
+  }
+  
+  .emergencia-opcoes {
+    grid-template-columns: 1fr;
+  }
+  
+  .back-from-form-btn {
+    top: 70px;
+    left: 10px;
+    padding: 8px 15px;
+    font-size: 14px;
+  }
+  
+  .formulario-header {
+    padding: 12px 15px;
+  }
+  
+  .formulario-header h2 {
+    font-size: 18px;
+  }
+}
+
+@media (max-width: 480px) {
+  .panic-btn {
+    bottom: 60px;
+    right: 10px;
+    width: 50px;
+    height: 50px;
+    font-size: 16px;
+  }
+  
+  .panic-label {
+    font-size: 9px;
+  }
+  
+  .external-mode-btn {
+    bottom: 120px;
+    right: 10px;
+  }
+  
+  .pwa-alert-card {
+    flex-direction: column;
+    text-align: center;
+  }
+}
+
+/* ========== ANIMAÇÕES ========== */
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Mantenha o resto do CSS anterior... */
+/* [Inserir todo o CSS anterior aqui, desde :root até o final] */
+
+/* ========== ESTILOS EXISTENTES (MANTER) ========== */
+/* Todos os estilos anteriores devem permanecer abaixo destes novos */
