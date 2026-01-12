@@ -1,1 +1,202 @@
+// utils.js - Funções utilitárias
+import { showToast } from './notifications.js';
+import { getState, setState } from './state.js';
 
+// Debounce function
+export function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
+// Throttle function
+export function throttle(func, limit) {
+  let inThrottle;
+  return function() {
+    const args = arguments;
+    const context = this;
+    if (!inThrottle) {
+      func.apply(context, args);
+      inThrottle = true;
+      setTimeout(() => inThrottle = false, limit);
+    }
+  };
+}
+
+// Format date
+export function formatDate(date, format = 'pt-BR') {
+  const d = date instanceof Date ? date : new Date(date);
+  return d.toLocaleDateString(format, {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
+// Format time ago
+export function timeAgo(date) {
+  const d = date instanceof Date ? date : new Date(date);
+  const now = new Date();
+  const seconds = Math.floor((now - d) / 1000);
+  
+  const intervals = {
+    ano: 31536000,
+    mês: 2592000,
+    semana: 604800,
+    dia: 86400,
+    hora: 3600,
+    minuto: 60,
+    segundo: 1
+  };
+  
+  for (const [unit, secondsInUnit] of Object.entries(intervals)) {
+    const interval = Math.floor(seconds / secondsInUnit);
+    if (interval >= 1) {
+      return `há ${interval} ${unit}${interval > 1 ? 's' : ''}`;
+    }
+  }
+  
+  return 'agora';
+}
+
+// Show loading overlay
+export function showLoading(message = 'Carregando...') {
+  const overlay = document.getElementById('loadingOverlay');
+  const text = document.getElementById('loadingText');
+  
+  if (overlay) overlay.style.display = 'flex';
+  if (text) text.textContent = message;
+}
+
+// Hide loading overlay
+export function hideLoading() {
+  const overlay = document.getElementById('loadingOverlay');
+  if (overlay) overlay.style.display = 'none';
+}
+
+// Monitorar conexão
+export function initConnectionMonitor() {
+  window.addEventListener('online', updateOnlineStatus);
+  window.addEventListener('offline', updateOnlineStatus);
+  
+  updateOnlineStatus();
+}
+
+// Atualizar status online
+export function updateOnlineStatus() {
+  const isOnline = navigator.onLine;
+  setState({ isOnline });
+  
+  const banner = document.getElementById('offlineBanner');
+  if (banner) {
+    banner.style.display = isOnline ? 'none' : 'flex';
+  }
+  
+  if (!isOnline) {
+    showToast('📶', 'Modo offline ativado', 'warning');
+  }
+}
+
+// Copiar para clipboard
+export function copyToClipboard(text) {
+  navigator.clipboard.writeText(text).then(() => {
+    showToast('✅', 'Copiado para a área de transferência', 'success');
+  }).catch(err => {
+    console.error('Erro ao copiar:', err);
+    showToast('❌', 'Erro ao copiar', 'error');
+  });
+}
+
+// Validar email
+export function isValidEmail(email) {
+  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return re.test(email);
+}
+
+// Validar matrícula
+export function isValidMatricula(matricula) {
+  const re = /^[A-Z0-9]{4,10}$/;
+  return re.test(matricula.toUpperCase());
+}
+
+// Capitalize string
+export function capitalize(str) {
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+}
+
+// Sleep function
+export function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// Generate unique ID
+export function generateId() {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2);
+}
+
+// Safe parse JSON
+export function safeJSONParse(str, fallback = {}) {
+  try {
+    return JSON.parse(str);
+  } catch (error) {
+    return fallback;
+  }
+}
+
+// Cache com tempo de expiração
+export class Cache {
+  constructor(namespace = 'qssma_cache', ttl = 3600000) { // 1 hora padrão
+    this.namespace = namespace;
+    this.ttl = ttl;
+  }
+  
+  set(key, value) {
+    const item = {
+      value,
+      expiry: Date.now() + this.ttl
+    };
+    localStorage.setItem(`${this.namespace}_${key}`, JSON.stringify(item));
+  }
+  
+  get(key) {
+    const itemStr = localStorage.getItem(`${this.namespace}_${key}`);
+    if (!itemStr) return null;
+    
+    const item = JSON.parse(itemStr);
+    if (Date.now() > item.expiry) {
+      this.remove(key);
+      return null;
+    }
+    
+    return item.value;
+  }
+  
+  remove(key) {
+    localStorage.removeItem(`${this.namespace}_${key}`);
+  }
+  
+  clear() {
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith(this.namespace)) {
+        localStorage.removeItem(key);
+      }
+    });
+  }
+}
+
+// Skeleton loading helper
+export function createSkeleton(count, template) {
+  const skeletons = [];
+  for (let i = 0; i < count; i++) {
+    skeletons.push(template);
+  }
+  return skeletons.join('');
+}
