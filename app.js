@@ -1,44 +1,44 @@
-// app.js - Portal QSSMA
+// app.js - PORTAL QSSMA (VERSÃO COMPLETA COM TODOS OS RECURSOS)
 import { 
   db,
   auth,
+  doc,
+  getDoc,
   getColaborador,
-  loginEmailSenha,
   registrarAviso,
   getAvisos,
   updateAviso,
   deleteAviso,
   monitorarAvisos,
-  getEstatisticasDashboard
+  getEstatisticasDashboard,
+  loginEmailSenha
 } from './firebase.js';
 
-// Estado global
+// Estado global do aplicativo
 let estadoApp = {
   usuario: null,
   gestor: null,
   perfil: null,
-  unsubscribeAvisos: null,
+  isOnline: navigator.onLine,
   avisosAtivos: [],
+  unsubscribeAvisos: null,
   estatisticas: null,
-  modoAltoContraste: false
-};
-
-// URLs dos formulários
-const FORMULARIOS = {
-  evento: 'https://forms.gle/4kxcxyYX8wzdDyDt5',
-  radar: 'https://forms.gle/BZahsh5ZAAVyixjx5',
-  flash: 'https://forms.gle/9d6f4w7hcpyDSCCs5'
+  modoAltoContraste: localStorage.getItem('modo_alto_contraste') === 'true',
+  modoExterno: localStorage.getItem('modo_externo') === 'true',
+  iframeAtivo: false
 };
 
 // ========== INICIALIZAÇÃO ==========
 document.addEventListener('DOMContentLoaded', () => {
   console.log('🚀 Portal QSSMA - Inicializando...');
   
-  // Adicionar rodapé
-  adicionarRodape();
-  
-  // Configurar event listeners
-  configurarEventListeners();
+  // Aplicar modos de visualização salvos
+  if (estadoApp.modoAltoContraste) {
+    document.body.classList.add('alto-contraste');
+  }
+  if (estadoApp.modoExterno) {
+    document.body.classList.add('modo-externo');
+  }
   
   // Verificar sessão existente
   verificarSessao();
@@ -46,106 +46,15 @@ document.addEventListener('DOMContentLoaded', () => {
   // Inicializar funcionalidades
   initDarkMode();
   initPWA();
+  initEventListeners();
   initConnectionMonitor();
-  initAltoContraste();
+  initAvisos();
+  initModoExterno();
+  initPanicButton();
+  initInstallPrompt();
   
   console.log('✅ Portal QSSMA inicializado com sucesso');
 });
-
-// ========== RODAPÉ ==========
-function adicionarRodape() {
-  const footer = document.createElement('footer');
-  footer.className = 'footer-dev';
-  footer.innerHTML = `
-    <div class="footer-content">
-      <span>Desenvolvido por Juan Sales</span>
-      <div class="footer-contacts">
-        <a href="tel:+5594992233753"><i class="fas fa-phone"></i> (94) 99223-3753</a>
-        <a href="mailto:Juansalesadm@gmail.com"><i class="fas fa-envelope"></i> Juansalesadm@gmail.com</a>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(footer);
-}
-
-// ========== CONFIGURAR EVENT LISTENERS ==========
-function configurarEventListeners() {
-  // Botões de navegação
-  document.getElementById('entrarBtn')?.addEventListener('click', entrarNoPortal);
-  document.getElementById('voltarInicioBtn')?.addEventListener('click', () => mostrarTela('welcome'));
-  document.getElementById('voltarPerfilUsuarioBtn')?.addEventListener('click', () => mostrarTela('telaEscolhaPerfil'));
-  document.getElementById('voltarPerfilGestorBtn')?.addEventListener('click', () => mostrarTela('telaEscolhaPerfil'));
-  
-  // Seleção de perfil
-  document.querySelectorAll('.profile-card').forEach(card => {
-    card.addEventListener('click', function() {
-      const perfil = this.dataset.perfil;
-      selecionarPerfil(perfil);
-    });
-  });
-  
-  // Login usuário
-  document.getElementById('loginUsuarioBtn')?.addEventListener('click', loginUsuario);
-  document.getElementById('matriculaUsuario')?.addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') loginUsuario();
-  });
-  
-  // Login gestor
-  document.getElementById('loginGestorBtn')?.addEventListener('click', loginGestor);
-  document.getElementById('gestorSenha')?.addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') loginGestor();
-  });
-  
-  // Logout
-  document.getElementById('logoutUsuarioBtn')?.addEventListener('click', logout);
-  document.getElementById('logoutGestorBtn')?.addEventListener('click', logout);
-  
-  // Formulários
-  document.querySelectorAll('.feature-card[data-form]').forEach(card => {
-    card.addEventListener('click', function() {
-      const tipo = this.dataset.form;
-      const usarIframe = this.dataset.iframe === 'true';
-      abrirFormulario(tipo, usarIframe);
-    });
-  });
-  
-  // Avisos
-  document.getElementById('avisosBtn')?.addEventListener('click', mostrarAvisos);
-  document.getElementById('verAvisosBtn')?.addEventListener('click', mostrarAvisos);
-  document.getElementById('gerenciarAvisosBtn')?.addEventListener('click', gerenciarAvisos);
-  document.getElementById('closeAvisosModal')?.addEventListener('click', () => fecharModal('avisosModal'));
-  document.getElementById('fecharAvisosBtn')?.addEventListener('click', () => fecharModal('avisosModal'));
-  
-  // WhatsApp
-  document.getElementById('whatsappBtn')?.addEventListener('click', abrirSuporteWhatsApp);
-  document.getElementById('whatsappGestorBtn')?.addEventListener('click', abrirSuporteWhatsApp);
-  
-  // Formulário iframe
-  document.getElementById('fecharFormularioBtn')?.addEventListener('click', fecharFormulario);
-  
-  // Modais
-  document.querySelectorAll('.modal-back').forEach(modal => {
-    modal.addEventListener('click', function(e) {
-      if (e.target === this) {
-        this.style.display = 'none';
-      }
-    });
-  });
-}
-
-// ========== FUNÇÕES GLOBAIS (disponíveis via window) ==========
-window.mostrarTela = mostrarTela;
-window.logout = logout;
-window.abrirFormularioInterno = abrirFormularioInterno;
-window.fecharFormulario = fecharFormulario;
-window.abrirSuporteWhatsApp = abrirSuporteWhatsApp;
-window.mostrarAvisos = mostrarAvisos;
-window.gerenciarAvisos = gerenciarAvisos;
-window.criarNovoAviso = criarNovoAviso;
-window.salvarNovoAviso = salvarNovoAviso;
-window.editarAviso = editarAviso;
-window.salvarEdicaoAviso = salvarEdicaoAviso;
-window.excluirAviso = excluirAviso;
 
 // ========== GERENCIAMENTO DE SESSÃO ==========
 function verificarSessao() {
@@ -158,46 +67,46 @@ function verificarSessao() {
     estadoApp.usuario = { 
       matricula, 
       nome,
-      funcao: localStorage.getItem('usuario_funcao'),
-      setor: 'Segurança'
+      funcao: localStorage.getItem('usuario_funcao') || 'Não informada'
     };
     estadoApp.perfil = 'usuario';
     mostrarTela('tela-usuario');
-    updateUserStatus(nome, matricula, localStorage.getItem('usuario_funcao'));
+    updateUserStatus(nome, matricula);
     iniciarMonitoramentoAvisos();
-    
   } else if (perfil === 'gestor' && gestorLogado) {
     estadoApp.perfil = 'gestor';
     estadoApp.gestor = { 
-      nome: localStorage.getItem('gestor_nome'),
+      nome: 'Gestor',
       email: localStorage.getItem('gestor_email')
     };
     mostrarTela('tela-gestor-dashboard');
     iniciarMonitoramentoAvisos();
-    carregarEstatisticas();
+    carregarEstatisticasGestor();
   }
 }
 
-function updateUserStatus(nome, matricula, funcao) {
+function updateUserStatus(nome, matricula) {
   const userStatus = document.getElementById('userStatus');
   const userName = document.getElementById('userName');
-  const usuarioNome = document.getElementById('usuarioNome');
-  const usuarioMatricula = document.getElementById('usuarioMatricula');
-  const usuarioFuncao = document.getElementById('usuarioFuncao');
+  const colaboradorNome = document.getElementById('colaboradorNome');
+  const colaboradorMatricula = document.getElementById('colaboradorMatricula');
+  const colaboradorFuncao = document.getElementById('colaboradorFuncao');
   
   if (userStatus) userStatus.style.display = 'flex';
   if (userName) userName.textContent = nome;
-  if (usuarioNome) usuarioNome.textContent = nome;
-  if (usuarioMatricula) usuarioMatricula.textContent = matricula;
-  if (usuarioFuncao) usuarioFuncao.textContent = funcao;
+  if (colaboradorNome) colaboradorNome.textContent = nome;
+  if (colaboradorMatricula) colaboradorMatricula.textContent = matricula;
+  if (colaboradorFuncao) {
+    colaboradorFuncao.textContent = localStorage.getItem('usuario_funcao') || 'Não informada';
+  }
 }
 
 // ========== SELEÇÃO DE PERFIL ==========
-function entrarNoPortal() {
+window.entrarNoPortal = function () {
   mostrarTela('telaEscolhaPerfil');
-}
+};
 
-function selecionarPerfil(perfil) {
+window.selecionarPerfil = function (perfil) {
   console.log('👤 Perfil selecionado:', perfil);
   estadoApp.perfil = perfil;
   localStorage.setItem('perfil_ativo', perfil);
@@ -207,15 +116,18 @@ function selecionarPerfil(perfil) {
   } else if (perfil === 'gestor') {
     mostrarTela('tela-gestor-login');
   }
-}
+};
 
 // ========== LOGIN USUÁRIO ==========
-async function loginUsuario() {
+window.confirmarMatriculaUsuario = async function () {
+  showLoading('🔍 Validando matrícula...');
+  
   const input = document.getElementById('matriculaUsuario');
   const loginBtn = document.getElementById('loginUsuarioBtn');
   
   if (!input) {
     alert('Campo de matrícula não encontrado');
+    hideLoading();
     return;
   }
 
@@ -224,123 +136,128 @@ async function loginUsuario() {
   if (!matricula) {
     alert('Informe sua matrícula');
     input.focus();
+    hideLoading();
     return;
   }
 
   try {
     loginBtn.disabled = true;
-    loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Validando...';
+    loginBtn.textContent = 'Validando...';
     
     const snap = await getColaborador(matricula);
 
     if (!snap.exists()) {
-      alert('❌ Matrícula não encontrada. Procure o RH ou o Gestor de QSSMA.');
+      alert('❌ Matrícula não encontrada.\n\nProcure o RH ou o Gestor de QSSMA para cadastrar sua matrícula.');
       input.focus();
+      input.select();
       return;
     }
 
     const dados = snap.data();
 
     if (!dados.ativo) {
-      alert('❌ Colaborador inativo. Contate a administração.');
+      alert('❌ Colaborador inativo. Contate a gestão.');
       return;
     }
 
     localStorage.setItem('usuario_matricula', matricula);
-    localStorage.setItem('usuario_nome', dados.nome || 'Colaborador');
-    localStorage.setItem('usuario_funcao', dados.funcao || '');
+    localStorage.setItem('usuario_nome', dados.nome);
+    localStorage.setItem('usuario_funcao', dados.funcao || 'Não informada');
+    localStorage.setItem('usuario_email', dados.email || '');
     localStorage.setItem('perfil_ativo', 'usuario');
     
     estadoApp.usuario = { 
       matricula, 
-      nome: dados.nome || 'Colaborador',
-      funcao: dados.funcao || '',
-      setor: 'Segurança'
+      nome: dados.nome,
+      funcao: dados.funcao || 'Não informada',
+      email: dados.email || ''
     };
     
-    updateUserStatus(dados.nome, matricula, dados.funcao || '');
-    
+    updateUserStatus(dados.nome, matricula);
     mostrarTela('tela-usuario');
     iniciarMonitoramentoAvisos();
     
-    console.log('✅ Usuário autenticado:', dados.nome);
+    console.log('✅ Colaborador autenticado:', dados.nome);
+    mostrarNotificacao('✅ Login realizado', `Bem-vindo(a), ${dados.nome}!`);
 
   } catch (erro) {
     console.error('Erro Firebase:', erro);
     alert('❌ Erro ao validar matrícula. Verifique sua conexão e tente novamente.');
   } finally {
+    hideLoading();
     if (loginBtn) {
       loginBtn.disabled = false;
-      loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Entrar';
+      loginBtn.textContent = 'Entrar';
     }
   }
-}
+};
 
 // ========== LOGIN GESTOR ==========
-async function loginGestor() {
+window.loginGestor = async function () {
   const email = document.getElementById('gestorEmail').value;
   const senha = document.getElementById('gestorSenha').value;
-  const loginBtn = document.getElementById('loginGestorBtn');
   
   if (!email || !senha) {
     alert('Preencha e-mail e senha');
     return;
   }
   
+  showLoading('🔐 Autenticando gestor...');
+  
   try {
-    loginBtn.disabled = true;
-    loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Validando...';
-    
     const user = await loginEmailSenha(email, senha);
     
     localStorage.setItem('gestor_logado', 'true');
     localStorage.setItem('gestor_email', email);
-    localStorage.setItem('gestor_nome', 'Gestor QSSMA');
+    localStorage.setItem('gestor_uid', user.uid);
     localStorage.setItem('perfil_ativo', 'gestor');
     
     estadoApp.gestor = { 
       email, 
+      uid: user.uid,
       nome: 'Gestor QSSMA'
     };
     
     mostrarTela('tela-gestor-dashboard');
     iniciarMonitoramentoAvisos();
-    carregarEstatisticas();
+    carregarEstatisticasGestor();
     
     console.log('✅ Gestor logado com sucesso');
+    mostrarNotificacao('✅ Acesso Gestor', 'Painel administrativo liberado');
     
-  } catch (error) {
-    console.error('Erro login gestor:', error);
-    alert(`❌ ${error.message}`);
+  } catch (erro) {
+    console.error('Erro no login gestor:', erro);
+    alert(`❌ Erro ao fazer login:\n\n${erro.message}`);
   } finally {
-    if (loginBtn) {
-      loginBtn.disabled = false;
-      loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Entrar';
-    }
+    hideLoading();
   }
-}
+};
 
 // ========== LOGOUT ==========
-function logout() {
+window.logout = function () {
   if (estadoApp.unsubscribeAvisos) estadoApp.unsubscribeAvisos();
   
   estadoApp = {
     usuario: null,
     gestor: null,
     perfil: null,
-    unsubscribeAvisos: null,
+    isOnline: navigator.onLine,
     avisosAtivos: [],
+    unsubscribeAvisos: null,
     estatisticas: null,
-    modoAltoContraste: false
+    modoAltoContraste: localStorage.getItem('modo_alto_contraste') === 'true',
+    modoExterno: localStorage.getItem('modo_externo') === 'true',
+    iframeAtivo: false
   };
   
   localStorage.removeItem('perfil_ativo');
   localStorage.removeItem('usuario_matricula');
   localStorage.removeItem('usuario_nome');
   localStorage.removeItem('usuario_funcao');
+  localStorage.removeItem('usuario_email');
   localStorage.removeItem('gestor_logado');
   localStorage.removeItem('gestor_email');
-  localStorage.removeItem('gestor_nome');
+  localStorage.removeItem('gestor_uid');
   
   const userStatus = document.getElementById('userStatus');
   if (userStatus) userStatus.style.display = 'none';
@@ -348,84 +265,123 @@ function logout() {
   mostrarTela('welcome');
   
   console.log('👋 Usuário deslogado');
-}
+  mostrarNotificacao('👋 Até logo', 'Você saiu do sistema');
+};
 
-// ========== FORMULÁRIOS ==========
-function abrirFormulario(tipo, usarIframe = true) {
-  const url = FORMULARIOS[tipo];
-  if (!url) {
-    alert('Formulário não encontrado');
+// ========== NAVEGAÇÃO ENTRE TELAS ==========
+window.mostrarTela = function(id) {
+  console.log('🔄 Mostrando tela:', id);
+  
+  // Fechar iframe se estiver aberto
+  if (estadoApp.iframeAtivo) {
+    fecharIframe();
+  }
+  
+  document.querySelectorAll('.tela').forEach(tela => {
+    tela.classList.add('hidden');
+    tela.classList.remove('ativa');
+  });
+  
+  const alvo = document.getElementById(id);
+  if (!alvo) {
+    console.error('Tela não encontrada:', id);
     return;
   }
   
-  if (usarIframe) {
-    abrirFormularioInterno(tipo, url);
-  } else {
-    window.open(url, '_blank');
+  alvo.classList.remove('hidden');
+  alvo.classList.add('ativa');
+  
+  // Mostrar/ocultar botão de pânico
+  const panicBtn = document.getElementById('panicButton');
+  if (panicBtn) {
+    if (id === 'tela-usuario' || id === 'tela-gestor-dashboard') {
+      panicBtn.style.display = 'flex';
+    } else {
+      panicBtn.style.display = 'none';
+    }
   }
-}
-
-function abrirFormularioInterno(tipo, url) {
-  const iframeContainer = document.getElementById('iframeContainer');
-  const iframe = document.getElementById('formIframe');
-  const formTitle = document.getElementById('formTitle');
   
-  if (!iframeContainer || !iframe || !formTitle) return;
+  // Mostrar/ocultar botões de modo externo
+  const modoExternoBtns = document.querySelectorAll('.modo-externo-btn');
+  modoExternoBtns.forEach(btn => {
+    if (id === 'tela-usuario' || id === 'tela-gestor-dashboard') {
+      btn.style.display = 'flex';
+    } else {
+      btn.style.display = 'none';
+    }
+  });
   
-  let titulo = '';
-  switch(tipo) {
-    case 'evento':
-      titulo = 'INFORME DE EVENTO';
+  switch(id) {
+    case 'tela-gestor-dashboard':
+      carregarEstatisticasGestor();
+      carregarAvisosGestor();
       break;
-    case 'radar':
-      titulo = 'RADAR MÓVEL DE VELOCIDADE';
+    case 'tela-usuario':
+      atualizarInfoUsuario();
       break;
-    case 'flash':
-      titulo = 'FLASH REPORT';
-      break;
-    default:
-      titulo = 'FORMULÁRIO';
   }
   
-  formTitle.textContent = titulo;
-  
-  // Configurar iframe com segurança
-  iframe.src = url;
-  iframe.onload = function() {
-    console.log('✅ Iframe carregado:', url);
-  };
-  
-  mostrarTela('tela-formulario-iframe');
-  
-  // Registrar ação
-  if (estadoApp.usuario) {
-    console.log(`📝 ${estadoApp.usuario.nome} abriu ${titulo}`);
-  }
-}
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+};
 
-function fecharFormulario() {
-  const iframe = document.getElementById('formIframe');
-  if (iframe) {
-    iframe.src = 'about:blank';
-  }
+function atualizarInfoUsuario() {
+  if (!estadoApp.usuario) return;
   
-  if (estadoApp.perfil === 'usuario') {
-    mostrarTela('tela-usuario');
-  } else if (estadoApp.perfil === 'gestor') {
-    mostrarTela('tela-gestor-dashboard');
-  }
-}
-
-// ========== SUPORTE WHATSAPP ==========
-function abrirSuporteWhatsApp() {
-  const telefone = '559392059914';
-  const mensagem = encodeURIComponent('Olá! Preciso de suporte no Portal QSSMA.');
-  const url = `https://wa.me/${telefone}?text=${mensagem}`;
+  const nomeElement = document.getElementById('colaboradorNome');
+  const matriculaElement = document.getElementById('colaboradorMatricula');
+  const funcaoElement = document.getElementById('colaboradorFuncao');
   
-  window.open(url, '_blank', 'noopener,noreferrer');
+  if (nomeElement) nomeElement.textContent = estadoApp.usuario.nome;
+  if (matriculaElement) matriculaElement.textContent = estadoApp.usuario.matricula;
+  if (funcaoElement) funcaoElement.textContent = estadoApp.usuario.funcao;
 }
 
 // ========== AVISOS ==========
+function initAvisos() {
+  const avisosBtn = document.getElementById('avisosBtn');
+  if (avisosBtn) {
+    avisosBtn.addEventListener('click', mostrarAvisos);
+  }
+}
+
+window.mostrarAvisos = function() {
+  const avisos = estadoApp.avisosAtivos || [];
+  
+  if (avisos.length === 0) {
+    alert('📭 Nenhum aviso no momento');
+    return;
+  }
+  
+  const avisosHTML = avisos.filter(aviso => aviso.ativo).map(aviso => `
+    <div class="aviso-item">
+      <div class="aviso-header">
+        <strong>${aviso.titulo}</strong>
+        <small>${aviso.timestamp ? new Date(aviso.timestamp.toDate()).toLocaleDateString() : ''}</small>
+      </div>
+      <p>${aviso.mensagem}</p>
+      <small class="aviso-destino">Para: ${aviso.destino || 'Todos'}</small>
+    </div>
+  `).join('');
+  
+  const modal = document.createElement('div');
+  modal.className = 'modal-back';
+  modal.innerHTML = `
+    <div class="modal">
+      <button class="close" onclick="this.parentElement.parentElement.remove()">✕</button>
+      <h3>📢 Avisos e Comunicados</h3>
+      <div class="avisos-list">
+        ${avisosHTML}
+      </div>
+      <div style="margin-top:12px">
+        <button class="btn" onclick="this.parentElement.parentElement.remove()">Fechar</button>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  modal.style.display = 'flex';
+};
+
 function iniciarMonitoramentoAvisos() {
   if (estadoApp.unsubscribeAvisos) return;
   
@@ -437,119 +393,83 @@ function iniciarMonitoramentoAvisos() {
       avisosCount.textContent = avisos.length;
       avisosCount.style.display = avisos.length > 0 ? 'inline' : 'none';
     }
+    
+    const avisosAtivosCount = document.getElementById('avisosAtivosCount');
+    if (avisosAtivosCount) {
+      avisosAtivosCount.textContent = avisos.length;
+    }
   });
 }
 
-function mostrarAvisos() {
-  const avisos = estadoApp.avisosAtivos || [];
-  const container = document.getElementById('avisosDinamicos');
-  
-  if (!container) return;
-  
-  if (avisos.length === 0) {
-    container.innerHTML = `
-      <div class="empty-state">
-        <i class="fas fa-bullhorn"></i>
-        <h4>Nenhum aviso no momento</h4>
-        <p>Não há avisos ativos no sistema.</p>
-      </div>
-    `;
-  } else {
-    const avisosHTML = avisos.filter(aviso => aviso.ativo).map(aviso => `
-      <div class="aviso-item">
-        <div class="aviso-header">
-          <strong>${aviso.titulo}</strong>
-          <small>${aviso.timestamp ? new Date(aviso.timestamp.toDate()).toLocaleDateString('pt-BR') : ''}</small>
-        </div>
-        <p>${aviso.mensagem}</p>
-        <small class="aviso-destino">Para: ${aviso.destino || 'Todos'}</small>
-      </div>
-    `).join('');
-    
-    container.innerHTML = avisosHTML;
-  }
-  
-  abrirModal('avisosModal');
-}
-
 // ========== GESTÃO DE AVISOS (GESTOR) ==========
-async function gerenciarAvisos() {
+async function carregarAvisosGestor() {
   try {
-    showLoading('Carregando avisos...');
-    
     const avisos = await getAvisos();
     estadoApp.avisosAtivos = avisos;
     
-    const modal = document.createElement('div');
-    modal.className = 'modal-back';
-    modal.id = 'gerenciarAvisosModal';
-    modal.innerHTML = `
-      <div class="modal large">
-        <button class="close" onclick="fecharModal('gerenciarAvisosModal')">✕</button>
-        <h3><i class="fas fa-bullhorn"></i> Gerenciar Avisos</h3>
-        
-        <div class="admin-actions-bar">
-          <button class="btn success" onclick="criarNovoAviso()">
-            <i class="fas fa-plus"></i> Novo Aviso
-          </button>
+    const container = document.getElementById('avisosAdminList');
+    if (!container) return;
+    
+    if (avisos.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <i class="fas fa-bullhorn"></i>
+          <h4>Nenhum aviso cadastrado</h4>
+          <p>Clique em "Novo Aviso" para criar o primeiro.</p>
         </div>
-        
-        <div class="avisos-admin-list" id="avisosAdminList">
-          ${avisos.length === 0 ? `
-            <div class="empty-state">
-              <i class="fas fa-bullhorn"></i>
-              <h4>Nenhum aviso cadastrado</h4>
-              <p>Clique em "Novo Aviso" para criar o primeiro.</p>
-            </div>
-          ` : avisos.map(aviso => `
-            <div class="aviso-admin-item" id="aviso-${aviso.id}">
-              <div class="aviso-admin-header">
-                <div>
-                  <h4>${aviso.titulo}</h4>
-                  <small class="aviso-destino-badge">Para: ${aviso.destino || 'Todos'}</small>
-                  <small class="aviso-data">${aviso.timestamp ? new Date(aviso.timestamp.toDate()).toLocaleString('pt-BR') : ''}</small>
-                </div>
-                <div class="aviso-admin-actions">
-                  <button class="icon-btn" onclick="editarAviso('${aviso.id}')" title="Editar">
-                    <i class="fas fa-edit"></i>
-                  </button>
-                  <button class="icon-btn danger" onclick="excluirAviso('${aviso.id}')" title="Excluir">
-                    <i class="fas fa-trash"></i>
-                  </button>
-                </div>
-              </div>
-              <div class="aviso-admin-content">
-                <p>${aviso.mensagem}</p>
-                <div class="aviso-status">
-                  <span class="status-badge ${aviso.ativo ? 'ativo' : 'inativo'}">
-                    ${aviso.ativo ? 'Ativo' : 'Inativo'}
-                  </span>
-                </div>
-              </div>
-            </div>
-          `).join('')}
+      `;
+      return;
+    }
+    
+    container.innerHTML = avisos.map(aviso => `
+      <div class="aviso-admin-item" id="aviso-${aviso.id}">
+        <div class="aviso-admin-header">
+          <div>
+            <h4>${aviso.titulo}</h4>
+            <small class="aviso-destino-badge">Para: ${aviso.destino || 'Todos'}</small>
+            <small class="aviso-data">${aviso.timestamp ? new Date(aviso.timestamp.toDate()).toLocaleString() : ''}</small>
+          </div>
+          <div class="aviso-admin-actions">
+            <button class="icon-btn" onclick="editarAviso('${aviso.id}')" title="Editar">
+              <i class="fas fa-edit"></i>
+            </button>
+            <button class="icon-btn danger" onclick="excluirAviso('${aviso.id}')" title="Excluir">
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
+        </div>
+        <div class="aviso-admin-content">
+          <p>${aviso.mensagem}</p>
+          <div class="aviso-status">
+            <span class="status-badge ${aviso.ativo ? 'ativo' : 'inativo'}">
+              ${aviso.ativo ? 'Ativo' : 'Inativo'}
+            </span>
+          </div>
         </div>
       </div>
-    `;
-    
-    document.body.appendChild(modal);
-    modal.style.display = 'flex';
+    `).join('');
     
   } catch (erro) {
     console.error('Erro ao carregar avisos:', erro);
-    alert('❌ Erro ao carregar avisos');
-  } finally {
-    hideLoading();
+    const container = document.getElementById('avisosAdminList');
+    if (container) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <i class="fas fa-exclamation-triangle"></i>
+          <h4>Erro ao carregar avisos</h4>
+          <p>Tente novamente mais tarde.</p>
+        </div>
+      `;
+    }
   }
 }
 
-function criarNovoAviso() {
+window.criarNovoAviso = function() {
   const modal = document.createElement('div');
   modal.className = 'modal-back';
-  modal.id = 'novoAvisoModal';
   modal.innerHTML = `
     <div class="modal">
-      <button class="close" onclick="fecharModal('novoAvisoModal')">✕</button>
+      <button class="close" onclick="this.parentElement.parentElement.remove()">✕</button>
       <h3><i class="fas fa-plus"></i> Criar Novo Aviso</h3>
       
       <div class="form-group">
@@ -566,7 +486,7 @@ function criarNovoAviso() {
         <label>Destino</label>
         <select id="novoAvisoDestino" class="form-input">
           <option value="todos">Todos</option>
-          <option value="usuarios">Usuários</option>
+          <option value="colaboradores">Colaboradores</option>
           <option value="gestores">Gestores</option>
         </select>
       </div>
@@ -581,7 +501,7 @@ function criarNovoAviso() {
         <button class="btn btn-primary" onclick="salvarNovoAviso()">
           <i class="fas fa-save"></i> Salvar Aviso
         </button>
-        <button class="btn btn-secondary" onclick="fecharModal('novoAvisoModal')">
+        <button class="btn btn-secondary" onclick="this.parentElement.parentElement.parentElement.remove()">
           <i class="fas fa-times"></i> Cancelar
         </button>
       </div>
@@ -590,13 +510,13 @@ function criarNovoAviso() {
   
   document.body.appendChild(modal);
   modal.style.display = 'flex';
-}
+};
 
-async function salvarNovoAviso() {
-  const titulo = document.getElementById('novoAvisoTitulo')?.value;
-  const mensagem = document.getElementById('novoAvisoMensagem')?.value;
-  const destino = document.getElementById('novoAvisoDestino')?.value;
-  const ativo = document.getElementById('novoAvisoAtivo')?.checked;
+window.salvarNovoAviso = async function() {
+  const titulo = document.getElementById('novoAvisoTitulo').value;
+  const mensagem = document.getElementById('novoAvisoMensagem').value;
+  const destino = document.getElementById('novoAvisoDestino').value;
+  const ativo = document.getElementById('novoAvisoAtivo').checked;
   
   if (!titulo || !mensagem) {
     alert('Preencha título e mensagem');
@@ -605,6 +525,10 @@ async function salvarNovoAviso() {
   
   try {
     showLoading('Salvando aviso...');
+    
+    if (!auth.currentUser) {
+      throw new Error('Usuário não autenticado. Faça login novamente.');
+    }
     
     await registrarAviso({
       titulo: titulo,
@@ -616,19 +540,18 @@ async function salvarNovoAviso() {
     
     mostrarNotificacao('✅ Aviso Criado', 'Aviso criado com sucesso!');
     
-    fecharModal('novoAvisoModal');
-    fecharModal('gerenciarAvisosModal');
-    gerenciarAvisos();
+    document.querySelector('.modal-back').remove();
+    carregarAvisosGestor();
     
   } catch (erro) {
     console.error('Erro ao salvar aviso:', erro);
-    alert('❌ Erro ao salvar aviso');
+    alert(`❌ Erro ao salvar aviso: ${erro.message}\n\nVerifique se está logado como gestor.`);
   } finally {
     hideLoading();
   }
-}
+};
 
-async function editarAviso(avisoId) {
+window.editarAviso = async function(avisoId) {
   try {
     showLoading('Carregando aviso...');
     
@@ -640,10 +563,9 @@ async function editarAviso(avisoId) {
     
     const modal = document.createElement('div');
     modal.className = 'modal-back';
-    modal.id = 'editarAvisoModal';
     modal.innerHTML = `
       <div class="modal">
-        <button class="close" onclick="fecharModal('editarAvisoModal')">✕</button>
+        <button class="close" onclick="this.parentElement.parentElement.remove()">✕</button>
         <h3><i class="fas fa-edit"></i> Editar Aviso</h3>
         
         <div class="form-group">
@@ -660,7 +582,7 @@ async function editarAviso(avisoId) {
           <label>Destino</label>
           <select id="editarAvisoDestino" class="form-input">
             <option value="todos" ${aviso.destino === 'todos' ? 'selected' : ''}>Todos</option>
-            <option value="usuarios" ${aviso.destino === 'usuarios' ? 'selected' : ''}>Usuários</option>
+            <option value="colaboradores" ${aviso.destino === 'colaboradores' ? 'selected' : ''}>Colaboradores</option>
             <option value="gestores" ${aviso.destino === 'gestores' ? 'selected' : ''}>Gestores</option>
           </select>
         </div>
@@ -675,7 +597,7 @@ async function editarAviso(avisoId) {
           <button class="btn btn-primary" onclick="salvarEdicaoAviso('${avisoId}')">
             <i class="fas fa-save"></i> Salvar Alterações
           </button>
-          <button class="btn btn-secondary" onclick="fecharModal('editarAvisoModal')">
+          <button class="btn btn-secondary" onclick="this.parentElement.parentElement.parentElement.remove()">
             <i class="fas fa-times"></i> Cancelar
           </button>
         </div>
@@ -691,13 +613,13 @@ async function editarAviso(avisoId) {
   } finally {
     hideLoading();
   }
-}
+};
 
-async function salvarEdicaoAviso(avisoId) {
-  const titulo = document.getElementById('editarAvisoTitulo')?.value;
-  const mensagem = document.getElementById('editarAvisoMensagem')?.value;
-  const destino = document.getElementById('editarAvisoDestino')?.value;
-  const ativo = document.getElementById('editarAvisoAtivo')?.checked;
+window.salvarEdicaoAviso = async function(avisoId) {
+  const titulo = document.getElementById('editarAvisoTitulo').value;
+  const mensagem = document.getElementById('editarAvisoMensagem').value;
+  const destino = document.getElementById('editarAvisoDestino').value;
+  const ativo = document.getElementById('editarAvisoAtivo').checked;
   
   if (!titulo || !mensagem) {
     alert('Preencha título e mensagem');
@@ -717,9 +639,8 @@ async function salvarEdicaoAviso(avisoId) {
     
     mostrarNotificacao('✅ Aviso Atualizado', 'Aviso atualizado com sucesso!');
     
-    fecharModal('editarAvisoModal');
-    fecharModal('gerenciarAvisosModal');
-    gerenciarAvisos();
+    document.querySelector('.modal-back').remove();
+    carregarAvisosGestor();
     
   } catch (erro) {
     console.error('Erro ao atualizar aviso:', erro);
@@ -727,9 +648,9 @@ async function salvarEdicaoAviso(avisoId) {
   } finally {
     hideLoading();
   }
-}
+};
 
-async function excluirAviso(avisoId) {
+window.excluirAviso = async function(avisoId) {
   if (!confirm('Tem certeza que deseja excluir este aviso?\n\nEsta ação não pode ser desfeita.')) {
     return;
   }
@@ -746,119 +667,452 @@ async function excluirAviso(avisoId) {
       avisoElement.remove();
     }
     
+    if (document.querySelectorAll('.aviso-admin-item').length === 0) {
+      const container = document.getElementById('avisosAdminList');
+      if (container) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <i class="fas fa-bullhorn"></i>
+            <h4>Nenhum aviso cadastrado</h4>
+            <p>Clique em "Novo Aviso" para criar o primeiro.</p>
+          </div>
+        `;
+      }
+    }
+    
   } catch (erro) {
     console.error('Erro ao excluir aviso:', erro);
     alert('❌ Erro ao excluir aviso');
   } finally {
     hideLoading();
   }
-}
+};
 
-// ========== ESTATÍSTICAS DASHBOARD ==========
-async function carregarEstatisticas() {
+// ========== ESTATÍSTICAS GESTOR ==========
+async function carregarEstatisticasGestor() {
   try {
     const estatisticas = await getEstatisticasDashboard();
     estadoApp.estatisticas = estatisticas;
     
-    const totalAvisos = document.getElementById('totalAvisos');
-    const eventosHoje = document.getElementById('eventosHoje');
+    // Atualizar cards do dashboard
     const totalColaboradores = document.getElementById('totalColaboradores');
+    const avisosAtivosCount = document.getElementById('avisosAtivosCount');
+    const usuariosOnline = document.getElementById('usuariosOnline');
     
-    if (totalAvisos) totalAvisos.textContent = estatisticas.totalAvisos;
-    if (eventosHoje) eventosHoje.textContent = estatisticas.eventosHoje;
     if (totalColaboradores) totalColaboradores.textContent = estatisticas.totalColaboradores;
+    if (avisosAtivosCount) avisosAtivosCount.textContent = estatisticas.totalAvisosAtivos;
+    if (usuariosOnline) usuariosOnline.textContent = estatisticas.usuariosOnline;
+    
+    // Atualizar estatísticas na aba de relatórios
+    const statColaboradores = document.getElementById('statColaboradores');
+    const statAvisos = document.getElementById('statAvisos');
+    
+    if (statColaboradores) statColaboradores.textContent = estatisticas.totalColaboradores;
+    if (statAvisos) statAvisos.textContent = estatisticas.totalAvisosAtivos;
     
   } catch (erro) {
     console.error('Erro ao carregar estatísticas:', erro);
   }
 }
 
-// ========== MODO ALTO CONTRASTE ==========
-function initAltoContraste() {
-  const altoContrasteBtn = document.getElementById('altoContrasteBtn');
-  if (altoContrasteBtn) {
-    altoContrasteBtn.addEventListener('click', toggleAltoContraste);
-    
-    const salvo = localStorage.getItem('alto_contraste');
-    if (salvo === 'true') {
-      toggleAltoContraste();
-    }
+window.atualizarRelatorios = function() {
+  carregarEstatisticasGestor();
+  mostrarNotificacao('🔄 Atualizando', 'Estatísticas atualizadas');
+};
+
+window.exportarRelatorios = function() {
+  if (!estadoApp.estatisticas) {
+    alert('Nenhum dado disponível para exportar');
+    return;
   }
+  
+  let csvContent = "Relatório Portal QSSMA\n";
+  csvContent += `Data: ${new Date().toLocaleDateString()}\n\n`;
+  csvContent += "Métrica,Valor\n";
+  csvContent += `Colaboradores Cadastrados,${estadoApp.estatisticas.totalColaboradores}\n`;
+  csvContent += `Avisos Ativos,${estadoApp.estatisticas.totalAvisosAtivos}\n`;
+  csvContent += `Usuários Online,${estadoApp.estatisticas.usuariosOnline}\n`;
+  
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  
+  link.setAttribute('href', url);
+  link.setAttribute('download', `relatorio_qssma_${new Date().toISOString().split('T')[0]}.csv`);
+  link.style.visibility = 'hidden';
+  
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  
+  mostrarNotificacao('✅ Relatório Exportado', 'Download iniciado!');
+};
+
+// ========== MODO EXTERNO (ALTO CONTRASTE) ==========
+function initModoExterno() {
+  const toggleBtn = document.createElement('button');
+  toggleBtn.className = 'modo-externo-btn';
+  toggleBtn.innerHTML = '<i class="fas fa-sun"></i>';
+  toggleBtn.title = 'Modo Externo (Alto Contraste)';
+  toggleBtn.onclick = toggleModoExterno;
+  toggleBtn.style.cssText = `
+    position: fixed;
+    top: 70px;
+    right: 15px;
+    z-index: 999;
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    background: var(--warning);
+    color: white;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    cursor: pointer;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+    display: none;
+  `;
+  
+  document.body.appendChild(toggleBtn);
+  
+  // Atualizar ícone inicial
+  updateModoExternoIcon();
 }
 
-function toggleAltoContraste() {
+window.toggleModoExterno = function() {
+  estadoApp.modoExterno = !estadoApp.modoExterno;
+  
+  if (estadoApp.modoExterno) {
+    document.body.classList.add('modo-externo');
+    document.body.classList.remove('alto-contraste');
+    estadoApp.modoAltoContraste = false;
+    localStorage.setItem('modo_alto_contraste', 'false');
+  } else {
+    document.body.classList.remove('modo-externo');
+  }
+  
+  localStorage.setItem('modo_externo', estadoApp.modoExterno.toString());
+  updateModoExternoIcon();
+  
+  mostrarNotificacao(
+    estadoApp.modoExterno ? '🔆 Modo Externo Ativo' : '🌙 Modo Normal',
+    estadoApp.modoExterno ? 'Contraste máximo para sol forte' : 'Modo normal ativado'
+  );
+};
+
+window.toggleAltoContraste = function() {
   estadoApp.modoAltoContraste = !estadoApp.modoAltoContraste;
   
   if (estadoApp.modoAltoContraste) {
     document.body.classList.add('alto-contraste');
-    localStorage.setItem('alto_contraste', 'true');
-    mostrarNotificacao('🌞 Modo Externo', 'Alto contraste ativado para melhor visibilidade');
+    document.body.classList.remove('modo-externo');
+    estadoApp.modoExterno = false;
+    localStorage.setItem('modo_externo', 'false');
   } else {
     document.body.classList.remove('alto-contraste');
-    localStorage.setItem('alto_contraste', 'false');
+  }
+  
+  localStorage.setItem('modo_alto_contraste', estadoApp.modoAltoContraste.toString());
+  
+  mostrarNotificacao(
+    estadoApp.modoAltoContraste ? '⚫ Alto Contraste Ativo' : '⚪ Contraste Normal',
+    estadoApp.modoAltoContraste ? 'Preto e branco para melhor visibilidade' : 'Cores padrão restauradas'
+  );
+};
+
+function updateModoExternoIcon() {
+  const btn = document.querySelector('.modo-externo-btn');
+  if (btn) {
+    if (estadoApp.modoExterno) {
+      btn.innerHTML = '<i class="fas fa-sun"></i>';
+      btn.style.background = 'var(--warning)';
+      btn.title = 'Desativar Modo Externo';
+    } else {
+      btn.innerHTML = '<i class="fas fa-sun"></i>';
+      btn.style.background = 'var(--secondary)';
+      btn.title = 'Ativar Modo Externo (Alto Contraste)';
+    }
   }
 }
 
-// ========== NAVEGAÇÃO ENTRE TELAS ==========
-function mostrarTela(id) {
-  console.log('🔄 Mostrando tela:', id);
+// ========== BOTÃO DE PÂNICO ==========
+function initPanicButton() {
+  const panicBtn = document.createElement('button');
+  panicBtn.id = 'panicButton';
+  panicBtn.innerHTML = '<i class="fas fa-phone-alt"></i>';
+  panicBtn.title = 'EMERGÊNCIA - Clique para ligar';
+  panicBtn.onclick = acionarEmergencia;
+  panicBtn.style.cssText = `
+    position: fixed;
+    bottom: 80px;
+    right: 20px;
+    z-index: 999;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--danger), var(--danger-dark));
+    color: white;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(231, 76, 60, 0.5);
+    animation: pulse-emergency 2s infinite;
+    display: none;
+  `;
   
+  document.body.appendChild(panicBtn);
+  
+  // Adicionar estilo de animação
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes pulse-emergency {
+      0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7); }
+      70% { box-shadow: 0 0 0 15px rgba(231, 76, 60, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); }
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+window.acionarEmergencia = function() {
+  if (confirm('⚠️ EMERGÊNCIA!\n\nVocê está prestes a fazer uma chamada de emergência.\n\nConfirmar ligação?')) {
+    const numeroEmergencia = '5594992233753'; // Número do Juan Sales (pode trocar pelo SAMU/Corpo de Bombeiros)
+    window.open(`tel:${numeroEmergencia}`, '_self');
+    
+    // Registrar tentativa de emergência
+    console.log('🚨 Emergência acionada! Ligando para:', numeroEmergencia);
+    mostrarNotificacao('🚨 Emergência', 'Ligando para contato de emergência...');
+  }
+};
+
+// ========== FORMULÁRIOS INTERNOS (IFRAME) ==========
+window.abrirFormularioInterno = function(url, titulo) {
+  estadoApp.iframeAtivo = true;
+  
+  // Criar container do iframe
+  const iframeContainer = document.createElement('div');
+  iframeContainer.id = 'iframeContainer';
+  iframeContainer.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: white;
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+  `;
+  
+  // Cabeçalho do iframe
+  const iframeHeader = document.createElement('div');
+  iframeHeader.style.cssText = `
+    background: var(--primary);
+    color: white;
+    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  `;
+  
+  iframeHeader.innerHTML = `
+    <h3 style="margin:0; font-size:18px;">
+      <i class="fas fa-file-alt"></i> ${titulo || 'Formulário'}
+    </h3>
+    <button onclick="fecharIframe()" style="
+      background: transparent;
+      border: none;
+      color: white;
+      font-size: 24px;
+      cursor: pointer;
+      padding: 5px 10px;
+    ">✕</button>
+  `;
+  
+  // Iframe
+  const iframe = document.createElement('iframe');
+  iframe.src = url;
+  iframe.style.cssText = `
+    flex: 1;
+    border: none;
+    width: 100%;
+  `;
+  
+  // Botão voltar
+  const backButton = document.createElement('button');
+  backButton.innerHTML = '<i class="fas fa-arrow-left"></i> Voltar para o App';
+  backButton.onclick = fecharIframe;
+  backButton.style.cssText = `
+    background: var(--secondary);
+    color: white;
+    border: none;
+    padding: 15px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    text-align: center;
+  `;
+  
+  // Montar container
+  iframeContainer.appendChild(iframeHeader);
+  iframeContainer.appendChild(iframe);
+  iframeContainer.appendChild(backButton);
+  
+  // Adicionar ao body
+  document.body.appendChild(iframeContainer);
+  
+  // Ocultar conteúdo principal
   document.querySelectorAll('.tela').forEach(tela => {
-    tela.classList.add('hidden');
-    tela.classList.remove('ativa');
+    tela.style.display = 'none';
   });
   
-  const alvo = document.getElementById(id);
-  if (!alvo) {
-    console.error('Tela não encontrada:', id);
-    return;
+  // Ocultar botão de pânico
+  const panicBtn = document.getElementById('panicButton');
+  if (panicBtn) panicBtn.style.display = 'none';
+  
+  // Ocultar botões de modo externo
+  document.querySelectorAll('.modo-externo-btn').forEach(btn => {
+    btn.style.display = 'none';
+  });
+};
+
+window.fecharIframe = function() {
+  estadoApp.iframeAtivo = false;
+  
+  const iframeContainer = document.getElementById('iframeContainer');
+  if (iframeContainer) {
+    iframeContainer.remove();
   }
   
-  alvo.classList.remove('hidden');
-  alvo.classList.add('ativa');
+  // Mostrar conteúdo principal novamente
+  document.querySelectorAll('.tela').forEach(tela => {
+    tela.style.display = '';
+  });
   
-  // Criar botão de pânico se não for tela inicial
-  if (id !== 'welcome' && id !== 'telaEscolhaPerfil') {
-    criarBotaoPanico();
+  // Mostrar botão de pânico se estiver em tela apropriada
+  const telaAtual = document.querySelector('.tela.ativa');
+  if (telaAtual && (telaAtual.id === 'tela-usuario' || telaAtual.id === 'tela-gestor-dashboard')) {
+    const panicBtn = document.getElementById('panicButton');
+    if (panicBtn) panicBtn.style.display = 'flex';
+    
+    // Mostrar botões de modo externo
+    document.querySelectorAll('.modo-externo-btn').forEach(btn => {
+      btn.style.display = 'flex';
+    });
+  }
+};
+
+// ========== PROMOÇÃO DE INSTALAÇÃO PWA ==========
+function initInstallPrompt() {
+  // Adicionar banner de instalação na tela inicial
+  const installBanner = document.createElement('div');
+  installBanner.id = 'installBanner';
+  installBanner.style.cssText = `
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: white;
+    padding: 12px 15px;
+    margin: 15px 0;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    box-shadow: var(--shadow-md);
+    animation: slideInUp 0.5s ease;
+  `;
+  
+  installBanner.innerHTML = `
+    <div style="flex:1;">
+      <strong style="display:flex; align-items:center; gap:8px;">
+        <i class="fas fa-mobile-alt"></i> Melhor experiência!
+      </strong>
+      <small style="opacity:0.9; display:block; margin-top:4px;">
+        Adicione este app à sua tela inicial para acesso rápido
+      </small>
+    </div>
+    <button onclick="installPWA()" style="
+      background: white;
+      color: var(--primary);
+      border: none;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    ">
+      <i class="fas fa-download"></i> Instalar App
+    </button>
+  `;
+  
+  // Inserir na tela de boas-vindas
+  const welcomeSection = document.getElementById('welcome');
+  if (welcomeSection) {
+    const welcomeContent = welcomeSection.querySelector('.welcome-content');
+    if (welcomeContent) {
+      welcomeContent.appendChild(installBanner);
+    }
+  }
+}
+
+window.installPWA = async function() {
+  const installBtn = document.getElementById('installBtn');
+  if (installBtn && installBtn.style.display !== 'none') {
+    installBtn.click();
   } else {
-    removerBotaoPanico();
+    alert('📱 Este navegador não suporta instalação de PWA ou o app já está instalado.\n\nNo Android: Toque em "⋯" (Menu) → "Adicionar à tela inicial"\nNo iOS: Toque em "Compartilhar" → "Adicionar à tela inicial"');
   }
-  
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-}
+};
 
-// ========== BOTÃO DE PÂNICO FLUTUANTE ==========
-function criarBotaoPanico() {
-  removerBotaoPanico();
+// ========== WHATSAPP SUPPORT ==========
+window.abrirSuporteWhatsApp = function() {
+  const telefone = '559392059914';
+  const mensagem = encodeURIComponent('Olá! Preciso de suporte no Portal QSSMA.');
+  const url = `https://wa.me/${telefone}?text=${mensagem}`;
   
-  const botaoPanico = document.createElement('button');
-  botaoPanico.className = 'botao-panico-flutuante';
-  botaoPanico.innerHTML = '<i class="fas fa-phone-alt"></i>';
-  botaoPanico.setAttribute('title', 'Emergência - Suporte QSSMA');
-  botaoPanico.onclick = abrirSuporteWhatsApp;
-  
-  document.body.appendChild(botaoPanico);
-}
-
-function removerBotaoPanico() {
-  const botaoAntigo = document.querySelector('.botao-panico-flutuante');
-  if (botaoAntigo) {
-    botaoAntigo.remove();
-  }
-}
+  window.open(url, '_blank', 'noopener,noreferrer');
+};
 
 // ========== NOTIFICAÇÕES ==========
 function mostrarNotificacao(titulo, mensagem) {
-  // Notificação na tela
-  criarNotificacaoTela(titulo, mensagem);
+  if (!("Notification" in window)) {
+    console.log("Este navegador não suporta notificações desktop");
+    return;
+  }
   
-  // Notificação do navegador
-  if ("Notification" in window && Notification.permission === "granted") {
-    new Notification(titulo, {
-      body: mensagem,
-      icon: 'logo.jpg'
+  if (Notification.permission === "granted") {
+    criarNotificacao(titulo, mensagem);
+  } else if (Notification.permission !== "denied") {
+    Notification.requestPermission().then(permission => {
+      if (permission === "granted") {
+        criarNotificacao(titulo, mensagem);
+      }
     });
   }
+  
+  criarNotificacaoTela(titulo, mensagem);
+}
+
+function criarNotificacao(titulo, mensagem) {
+  const notification = new Notification(titulo, {
+    body: mensagem,
+    icon: 'logo.jpg',
+    tag: 'portal-qssma'
+  });
+  
+  notification.onclick = function() {
+    window.focus();
+    this.close();
+  };
 }
 
 function criarNotificacaoTela(titulo, mensagem) {
@@ -895,23 +1149,6 @@ function hideLoading() {
   if (overlay) overlay.style.display = 'none';
 }
 
-function abrirModal(modalId) {
-  const modal = document.getElementById(modalId);
-  if (modal) {
-    modal.style.display = 'flex';
-  }
-}
-
-function fecharModal(modalId) {
-  const modal = document.getElementById(modalId);
-  if (modal) {
-    modal.style.display = 'none';
-    if (modalId !== 'avisosModal') {
-      modal.remove();
-    }
-  }
-}
-
 // ========== FUNÇÕES DE TEMAS E PWA ==========
 function initDarkMode() {
   const darkToggle = document.getElementById('darkToggle');
@@ -926,6 +1163,7 @@ function initDarkMode() {
   }
   
   darkToggle.addEventListener('click', toggleDarkMode);
+  
   prefersDark.addEventListener('change', (e) => {
     if (!localStorage.getItem('qssma_dark')) {
       if (e.matches) {
@@ -943,6 +1181,14 @@ function toggleDarkMode() {
   const isDark = document.body.classList.toggle('dark');
   localStorage.setItem('qssma_dark', isDark ? '1' : '0');
   updateDarkModeIcon(isDark);
+  
+  const darkToggle = document.getElementById('darkToggle');
+  if (darkToggle) {
+    darkToggle.style.transform = 'scale(0.95)';
+    setTimeout(() => {
+      darkToggle.style.transform = '';
+    }, 150);
+  }
 }
 
 function updateDarkModeIcon(isDark) {
@@ -964,24 +1210,6 @@ function initPWA() {
     deferredPrompt = e;
     installBtn.style.display = 'flex';
     console.log('📱 PWA pode ser instalado');
-    
-    // Mostrar aviso PWA
-    const pwaAviso = document.createElement('div');
-    pwaAviso.className = 'alert-card pwa-alert';
-    pwaAviso.innerHTML = `
-      <div class="alert-icon">
-        <i class="fas fa-mobile-alt"></i>
-      </div>
-      <div class="alert-content">
-        <strong>Para melhor experiência, adicione este app à sua tela inicial</strong>
-        <p>Clique no botão "Instalar" acima para acesso rápido.</p>
-      </div>
-    `;
-    
-    const welcomeText = document.querySelector('.welcome-text');
-    if (welcomeText) {
-      welcomeText.appendChild(pwaAviso);
-    }
   });
   
   installBtn.addEventListener('click', async () => {
@@ -996,6 +1224,9 @@ function initPWA() {
     if (choiceResult.outcome === 'accepted') {
       console.log('✅ Usuário aceitou a instalação');
       installBtn.style.display = 'none';
+      // Ocultar banner de instalação
+      const installBanner = document.getElementById('installBanner');
+      if (installBanner) installBanner.style.display = 'none';
     } else {
       console.log('❌ Usuário recusou a instalação');
     }
@@ -1006,10 +1237,14 @@ function initPWA() {
   window.addEventListener('appinstalled', () => {
     console.log('🎉 PWA instalado com sucesso');
     installBtn.style.display = 'none';
+    const installBanner = document.getElementById('installBanner');
+    if (installBanner) installBanner.style.display = 'none';
   });
   
   if (window.matchMedia('(display-mode: standalone)').matches) {
     installBtn.style.display = 'none';
+    const installBanner = document.getElementById('installBanner');
+    if (installBanner) installBanner.style.display = 'none';
   }
 }
 
@@ -1022,21 +1257,64 @@ function initConnectionMonitor() {
 }
 
 function updateOnlineStatus() {
+  estadoApp.isOnline = navigator.onLine;
   const statusElement = document.getElementById('connectionStatus');
   const offlineBanner = document.getElementById('offlineBanner');
   
   if (statusElement) {
-    statusElement.style.color = navigator.onLine ? '#4CAF50' : '#FF5722';
-    statusElement.title = navigator.onLine ? 'Online' : 'Offline';
+    statusElement.innerHTML = estadoApp.isOnline ? '<i class="fas fa-circle"></i>' : '<i class="fas fa-circle"></i>';
+    statusElement.style.color = estadoApp.isOnline ? '#4CAF50' : '#FF5722';
+    statusElement.title = estadoApp.isOnline ? 'Online' : 'Offline';
   }
   
   if (offlineBanner) {
-    offlineBanner.style.display = navigator.onLine ? 'none' : 'block';
+    offlineBanner.style.display = estadoApp.isOnline ? 'none' : 'block';
   }
   
-  if (!navigator.onLine) {
+  if (!estadoApp.isOnline) {
+    console.warn('📶 Aplicativo offline');
     mostrarNotificacao('📶 Modo Offline', 'Algumas funcionalidades podem não estar disponíveis');
   }
 }
 
-console.log('🚀 Portal QSSMA carregado com sucesso!');
+// ========== SERVICE WORKER ==========
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('service-worker.js')
+      .then(registration => {
+        console.log('✅ ServiceWorker registrado:', registration.scope);
+      })
+      .catch(error => {
+        console.log('❌ Falha ao registrar ServiceWorker:', error);
+      });
+  });
+}
+
+// ========== EVENT LISTENERS ==========
+function initEventListeners() {
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      if (estadoApp.iframeAtivo) {
+        fecharIframe();
+      } else {
+        closeAllModals();
+      }
+    }
+  });
+  
+  document.querySelectorAll('.modal-back').forEach(modal => {
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.remove();
+      }
+    });
+  });
+}
+
+function closeAllModals() {
+  document.querySelectorAll('.modal-back').forEach(modal => {
+    modal.remove();
+  });
+}
+
+console.log('🚀 app.js carregado com sucesso!');
