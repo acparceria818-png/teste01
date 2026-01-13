@@ -554,4 +554,17 @@ window.fecharFormulario = fecharFormulario;
 window.abrirSOS = abrirSOS;
 window.fecharSOS = fecharSOS;
 
+// Adicionar estas funções também
+window.entrarNoPortal = entrarNoPortal;
+window.selecionarPerfil = selecionarPerfil;
+window.confirmarMatriculaUsuario = confirmarMatriculaUsuario;
+window.loginGestor = loginGestor;
+window.logout = logout;
+window.mostrarTela = mostrarTela;
+window.atualizarRelatorios = atualizarRelatorios;
+window.exportarRelatorios = exportarRelatorios;
+window.abrirSuporteWhatsApp = abrirSuporteWhatsApp;
+window.instalarPWA = instalarPWA;
+window.fecharBannerPWA = fecharBannerPWA;
+
 console.log('🚀 app.js carregado com sucesso!');
