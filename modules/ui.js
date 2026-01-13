@@ -279,3 +279,34 @@ window.abrirSuporteWhatsApp = function() {
   
   window.open(url, '_blank', 'noopener,noreferrer');
 };
+// modules/ui.js - Adicione esta função no final do arquivo
+export function mostrarTela(idTela) {
+  console.log(`🔄 Mostrando tela: ${idTela}`);
+  
+  // Esconder todas as telas
+  const telas = document.querySelectorAll('.tela');
+  telas.forEach(tela => {
+    tela.classList.remove('ativa');
+    tela.classList.add('hidden');
+  });
+  
+  // Mostrar a tela solicitada
+  const telaAlvo = document.getElementById(idTela);
+  if (telaAlvo) {
+    telaAlvo.classList.remove('hidden');
+    telaAlvo.classList.add('ativa');
+    
+    // Rolar para o topo
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    // Focar no primeiro elemento interativo se for tela de login
+    if (idTela.includes('login')) {
+      setTimeout(() => {
+        const primeiroInput = telaAlvo.querySelector('input');
+        if (primeiroInput) primeiroInput.focus();
+      }, 100);
+    }
+  } else {
+    console.error(`❌ Tela não encontrada: ${idTela}`);
+  }
+}
