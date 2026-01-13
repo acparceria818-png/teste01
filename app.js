@@ -719,3 +719,22 @@ window.abrirSuporteWhatsApp = function() {
 };
 
 console.log('🚀 app.js carregado com sucesso!');
+// Forçar atualização do Service Worker se houver mudanças
+if ('serviceWorker' in navigator) {
+  let refreshing = false;
+  
+  // Detectar quando um novo service worker está pronto
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!refreshing) {
+      refreshing = true;
+      window.location.reload();
+    }
+  });
+  
+  // Verificar atualizações periodicamente
+  setInterval(() => {
+    navigator.serviceWorker.getRegistration().then(reg => {
+      if (reg) reg.update();
+    });
+  }, 60 * 60 * 1000); // A cada hora
+}
