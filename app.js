@@ -1,4 +1,4 @@
-// app.js - PORTAL QSSMA (VERSÃO MODULARIZADA)
+// app.js - PORTAL QSSMA (VERSÃO CORRIGIDA)
 import { 
   db,
   auth,
@@ -175,7 +175,225 @@ function limparSessao() {
   if (userStatus) userStatus.style.display = 'none';
 }
 
-// ========== SELEÇÃO DE PERFIL ==========
+// ========== EVENT LISTENERS (ESSENCIAL - O PROBLEMA ESTÁ AQUI) ==========
+function initEventListeners() {
+  console.log('🔗 Inicializando event listeners...');
+  
+  // 1. Botão Acessar Portal
+  const acessarBtn = document.getElementById('acessarPortalBtn');
+  if (acessarBtn) {
+    console.log('✅ Botão Acessar Portal encontrado');
+    acessarBtn.addEventListener('click', () => {
+      console.log('🎯 Clicou em Acessar Portal');
+      mostrarTela('telaEscolhaPerfil');
+    });
+  }
+  
+  // 2. Botões de Perfil
+  const perfilUsuarioBtn = document.getElementById('perfilUsuarioBtn');
+  if (perfilUsuarioBtn) {
+    perfilUsuarioBtn.addEventListener('click', () => {
+      console.log('🎯 Clicou em Perfil Usuário');
+      mostrarTela('tela-usuario-login');
+    });
+  }
+  
+  const perfilGestorBtn = document.getElementById('perfilGestorBtn');
+  if (perfilGestorBtn) {
+    perfilGestorBtn.addEventListener('click', () => {
+      console.log('🎯 Clicou em Perfil Gestor');
+      mostrarTela('tela-gestor-login');
+    });
+  }
+  
+  // 3. Botão Login Usuário
+  const loginUsuarioBtn = document.getElementById('loginUsuarioBtn');
+  if (loginUsuarioBtn) {
+    loginUsuarioBtn.addEventListener('click', async () => {
+      const input = document.getElementById('matriculaUsuario');
+      const matricula = input?.value.trim().toUpperCase();
+      
+      if (!matricula) {
+        showToast('error', 'Campo obrigatório', 'Informe sua matrícula');
+        input?.focus();
+        return;
+      }
+      
+      await loginUsuario(matricula, {
+        onSuccess: (dados) => {
+          estadoApp.usuario = { 
+            matricula, 
+            nome: dados.nome,
+            funcao: dados.funcao || 'Não informada',
+            email: dados.email || ''
+          };
+          
+          updateUserStatus(dados.nome, matricula, dados.funcao);
+          mostrarTela('tela-usuario');
+          iniciarMonitoramentoAvisos();
+          criarCardsUsuario();
+          
+          showToast('success', 'Login realizado', `Bem-vindo(a), ${dados.nome}!`);
+        },
+        onError: (erro) => {
+          if (erro.message.includes('não encontrada')) {
+            showToast('error', 'Matrícula não encontrada', 'Procure o RH ou o Gestor de QSSMA');
+          } else if (erro.message.includes('inativo')) {
+            showToast('error', 'Colaborador inativo', 'Contate a gestão');
+          } else {
+            showToast('error', 'Erro ao validar', 'Verifique sua conexão e tente novamente');
+          }
+        }
+      });
+    });
+  }
+  
+  // 4. Botão Login Gestor
+  const loginGestorBtn = document.getElementById('loginGestorBtn');
+  if (loginGestorBtn) {
+    loginGestorBtn.addEventListener('click', async () => {
+      const email = document.getElementById('gestorEmail').value;
+      const senha = document.getElementById('gestorSenha').value;
+      
+      if (!email || !senha) {
+        showToast('error', 'Campos obrigatórios', 'Preencha e-mail e senha');
+        return;
+      }
+      
+      await loginGestor(email, senha, {
+        onSuccess: (user) => {
+          estadoApp.gestor = { 
+            email, 
+            uid: user.uid,
+            nome: 'Gestor QSSMA'
+          };
+          
+          mostrarTela('tela-gestor-dashboard');
+          iniciarMonitoramentoAvisos();
+          atualizarStatsGestor();
+          carregarAvisosGestor();
+          
+          showToast('success', 'Acesso Gestor', 'Painel administrativo liberado');
+        },
+        onError: (erro) => {
+          showToast('error', 'Erro no login', erro.message);
+        }
+      });
+    });
+  }
+  
+  // 5. Botões de Voltar
+  const voltarWelcomeBtn = document.getElementById('voltarWelcomeBtn');
+  if (voltarWelcomeBtn) {
+    voltarWelcomeBtn.addEventListener('click', () => mostrarTela('welcome'));
+  }
+  
+  const voltarPerfilBtn = document.getElementById('voltarPerfilBtn');
+  if (voltarPerfilBtn) {
+    voltarPerfilBtn.addEventListener('click', () => mostrarTela('telaEscolhaPerfil'));
+  }
+  
+  const voltarPerfilGestorBtn = document.getElementById('voltarPerfilGestorBtn');
+  if (voltarPerfilGestorBtn) {
+    voltarPerfilGestorBtn.addEventListener('click', () => mostrarTela('telaEscolhaPerfil'));
+  }
+  
+  // 6. Botões de Logout
+  const logoutUsuarioBtn = document.getElementById('logoutUsuarioBtn');
+  if (logoutUsuarioBtn) {
+    logoutUsuarioBtn.addEventListener('click', () => {
+      logout();
+      limparSessao();
+      mostrarTela('welcome');
+      showToast('info', 'Até logo', 'Você saiu do sistema');
+    });
+  }
+  
+  const logoutGestorBtn = document.getElementById('logoutGestorBtn');
+  if (logoutGestorBtn) {
+    logoutGestorBtn.addEventListener('click', () => {
+      logout();
+      limparSessao();
+      mostrarTela('welcome');
+      showToast('info', 'Até logo', 'Você saiu do sistema');
+    });
+  }
+  
+  // 7. Botão SOS
+  const sosBtn = document.getElementById('sosButton');
+  if (sosBtn) {
+    sosBtn.addEventListener('click', () => {
+      console.log('🎯 Clicou em SOS');
+      abrirSOS();
+    });
+  }
+  
+  // 8. Botão Fechar SOS
+  const fecharSOSBtn = document.getElementById('fecharSOSBtn');
+  if (fecharSOSBtn) {
+    fecharSOSBtn.addEventListener('click', () => {
+      fecharSOS();
+    });
+  }
+  
+  // 9. Botões do Dashboard do Gestor
+  const novoAvisoBtn = document.getElementById('novoAvisoBtn');
+  if (novoAvisoBtn) {
+    novoAvisoBtn.addEventListener('click', () => {
+      criarNovoAviso();
+    });
+  }
+  
+  const exportarRelatoriosBtn = document.getElementById('exportarRelatoriosBtn');
+  if (exportarRelatoriosBtn) {
+    exportarRelatoriosBtn.addEventListener('click', exportarRelatorios);
+  }
+  
+  const atualizarRelatoriosBtn = document.getElementById('atualizarRelatoriosBtn');
+  if (atualizarRelatoriosBtn) {
+    atualizarRelatoriosBtn.addEventListener('click', atualizarRelatorios);
+  }
+  
+  // 10. Tabs do Dashboard do Gestor
+  document.querySelectorAll('.dashboard-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const tabId = tab.getAttribute('data-tab');
+      mudarTabGestor(tabId);
+    });
+  });
+  
+  // 11. Botão Fechar Modal de Avisos
+  const fecharAvisosBtn = document.getElementById('fecharAvisosBtn');
+  const fecharAvisosModalBtn = document.getElementById('fecharAvisosModalBtn');
+  if (fecharAvisosBtn) fecharAvisosBtn.addEventListener('click', fecharModalAvisos);
+  if (fecharAvisosModalBtn) fecharAvisosModalBtn.addEventListener('click', fecharModalAvisos);
+  
+  console.log('✅ Event listeners inicializados');
+}
+
+function fecharModalAvisos() {
+  const modal = document.getElementById('avisosModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+function mudarTabGestor(tabId) {
+  // Atualizar tabs ativas
+  document.querySelectorAll('.dashboard-tab').forEach(tab => {
+    tab.classList.remove('active');
+  });
+  document.querySelectorAll('.tab-content').forEach(content => {
+    content.classList.remove('active');
+  });
+  
+  // Ativar tab selecionada
+  const tabAtiva = document.querySelector(`.dashboard-tab[data-tab="${tabId}"]`);
+  const conteudoAtivo = document.getElementById(`tab${tabId.charAt(0).toUpperCase() + tabId.slice(1)}`);
+  
+  if (tabAtiva) tabAtiva.classList.add('active');
+  if (conteudoAtivo) conteudoAtivo.classList.add('active');
+}
+
+// ========== NAVEGAÇÃO ENTRE TELAS (FUNÇÕES GLOBAIS) ==========
 window.entrarNoPortal = function() {
   mostrarTela('telaEscolhaPerfil');
 };
@@ -187,14 +405,12 @@ window.selecionarPerfil = function(perfil) {
 
   if (perfil === 'usuario') {
     mostrarTela('tela-usuario-login');
-    // Focar no campo de matrícula
     setTimeout(() => {
       const input = document.getElementById('matriculaUsuario');
       if (input) input.focus();
     }, 100);
   } else if (perfil === 'gestor') {
     mostrarTela('tela-gestor-login');
-    // Focar no campo de email
     setTimeout(() => {
       const input = document.getElementById('gestorEmail');
       if (input) input.focus();
@@ -202,7 +418,7 @@ window.selecionarPerfil = function(perfil) {
   }
 };
 
-// ========== LOGIN USUÁRIO ==========
+// ========== LOGIN USUÁRIO (FUNÇÃO GLOBAL) ==========
 window.confirmarMatriculaUsuario = async function() {
   const input = document.getElementById('matriculaUsuario');
   const matricula = input?.value.trim().toUpperCase();
@@ -241,7 +457,7 @@ window.confirmarMatriculaUsuario = async function() {
   });
 };
 
-// ========== LOGIN GESTOR ==========
+// ========== LOGIN GESTOR (FUNÇÃO GLOBAL) ==========
 window.loginGestor = async function() {
   const email = document.getElementById('gestorEmail').value;
   const senha = document.getElementById('gestorSenha').value;
@@ -272,17 +488,13 @@ window.loginGestor = async function() {
   });
 };
 
-// ========== LOGOUT ==========
+// ========== LOGOUT (FUNÇÃO GLOBAL) ==========
 window.logout = function() {
   logout();
   limparSessao();
   mostrarTela('welcome');
-  
   showToast('info', 'Até logo', 'Você saiu do sistema');
 };
-
-// ========== NAVEGAÇÃO ENTRE TELAS ==========
-// Função já importada do módulo UI
 
 // ========== AVISOS ==========
 function iniciarMonitoramentoAvisos() {
@@ -303,9 +515,6 @@ function iniciarMonitoramentoAvisos() {
     }
   });
 }
-
-// ========== GESTÃO DE AVISOS (GESTOR) ==========
-// Funções já importadas do módulo avisos
 
 // ========== ESTATÍSTICAS GESTOR ==========
 async function carregarEstatisticasGestor() {
@@ -378,62 +587,6 @@ window.exportarRelatorios = async function() {
   }
 };
 
-// ========== FUNÇÕES DE UTILIDADE ==========
-function initEventListeners() {
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-      closeAllModals();
-    }
-    
-    // Navegação por teclado
-    if (e.key === 'Tab') {
-      document.body.classList.add('keyboard-nav');
-    }
-  });
-  
-  document.addEventListener('click', () => {
-    document.body.classList.remove('keyboard-nav');
-  });
-  
-  // Modo externo
-  const modoExternoBtn = document.getElementById('modoExternoBtn');
-  if (modoExternoBtn) {
-    modoExternoBtn.addEventListener('click', () => {
-      toggleModoExterno();
-      const isExterno = document.body.getAttribute('data-externo') === 'true';
-      showToast('info', 
-        isExterno ? 'Modo Externo Ativado' : 'Modo Externo Desativado',
-        isExterno ? 'Contraste máximo para ambiente externo' : 'Modo normal ativado'
-      );
-    });
-  }
-  
-  // Alto contraste
-  const contrasteBtn = document.getElementById('contrasteToggle');
-  if (contrasteBtn) {
-    contrasteBtn.addEventListener('click', () => {
-      toggleContraste();
-      const isContraste = document.body.getAttribute('data-contraste') === 'true';
-      showToast('info',
-        isContraste ? 'Alto Contraste Ativado' : 'Alto Contraste Desativado',
-        isContraste ? 'Cores otimizadas para visibilidade' : 'Cores padrão'
-      );
-    });
-  }
-  
-  // SOS
-  const sosBtn = document.getElementById('sosButton');
-  if (sosBtn) {
-    sosBtn.addEventListener('click', abrirSOS);
-  }
-}
-
-function closeAllModals() {
-  document.querySelectorAll('.modal-back').forEach(modal => {
-    modal.remove();
-  });
-}
-
 // ========== FUNÇÕES DE CONEXÃO ==========
 function initConnectionMonitor() {
   window.addEventListener('online', updateOnlineStatus);
@@ -475,7 +628,6 @@ function initPWA() {
     
     if (installBtn) {
       installBtn.style.display = 'flex';
-      installBtn.addEventListener('click', instalarPWA);
     }
   });
   
@@ -543,28 +695,27 @@ if ('serviceWorker' in navigator) {
 }
 
 // ========== EXPORT FUNÇÕES PARA WINDOW ==========
+// Avisos
 window.mostrarAvisos = mostrarAvisosUsuario;
 window.criarNovoAviso = criarNovoAviso;
 window.salvarNovoAviso = salvarNovoAviso;
 window.editarAviso = editarAviso;
 window.salvarEdicaoAviso = salvarEdicaoAviso;
 window.excluirAviso = excluirAviso;
+
+// Acessibilidade
 window.abrirFormularioInterno = abrirFormularioInterno;
 window.fecharFormulario = fecharFormulario;
 window.abrirSOS = abrirSOS;
 window.fecharSOS = fecharSOS;
 
-// Adicionar estas funções também
-window.entrarNoPortal = entrarNoPortal;
-window.selecionarPerfil = selecionarPerfil;
-window.confirmarMatriculaUsuario = confirmarMatriculaUsuario;
-window.loginGestor = loginGestor;
-window.logout = logout;
+// Utilitários
 window.mostrarTela = mostrarTela;
-window.atualizarRelatorios = atualizarRelatorios;
-window.exportarRelatorios = exportarRelatorios;
-window.abrirSuporteWhatsApp = abrirSuporteWhatsApp;
-window.instalarPWA = instalarPWA;
-window.fecharBannerPWA = fecharBannerPWA;
+window.abrirSuporteWhatsApp = function() {
+  const telefone = '559392059914';
+  const mensagem = encodeURIComponent('Olá! Preciso de suporte no Portal QSSMA.');
+  const url = `https://wa.me/${telefone}?text=${mensagem}`;
+  window.open(url, '_blank', 'noopener,noreferrer');
+};
 
 console.log('🚀 app.js carregado com sucesso!');
