@@ -35,7 +35,7 @@ import {
   loginGestor,
   logout,
   verificarPermissaoGestor
-} from './modules/auth.js';
+} from './modules/firebaseAuth.js';
 
 import {
   mostrarNotificacao,
