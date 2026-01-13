@@ -6,42 +6,33 @@
   <meta name="description" content="Portal QSSMA - Sistema de Gestão em Segurança">
   <meta name="theme-color" content="#b00000" />
   
-  <!-- PWA -->
   <title>Portal QSSMA - Sistema de Gestão</title>
   <link rel="manifest" href="manifest.json">
-  <link rel="icon" href="assets/logo.jpg" type="image/jpg">
+  <link rel="icon" href="logo.jpg" type="image/jpg">
   
   <!-- CSS -->
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap">
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
-  <!-- JS Módulos -->
-  <script type="module" src="firebase.js"></script>
-  <script type="module" src="modules/auth.js"></script>
-  <script type="module" src="modules/avisos.js"></script>
-  <script type="module" src="modules/ui.js"></script>
-  <script type="module" src="modules/notifications.js"></script>
-  <script type="module" src="modules/accessibility.js"></script>
-  <script type="module" src="modules/forms.js"></script>
+  <!-- JS -->
   <script type="module" src="app.js"></script>
 </head>
-<body data-contraste="false">
+<body>
 
 <header>
-  <img src="assets/logo.jpg" alt="Logo QSSMA" class="logo" loading="lazy" />
+  <img src="logo.jpg" alt="Logo QSSMA" class="logo" loading="lazy" />
   <h1>PORTAL QSSMA <small>Gestão em Segurança</small></h1>
   
   <div class="user-status" id="userStatus" style="display:none">
     <span id="userName"></span>
-    <button class="logout-btn" onclick="logout()" title="Sair">
+    <button class="logout-btn" id="logoutBtn" title="Sair">
       <i class="fas fa-sign-out-alt"></i>
     </button>
   </div>
 </header>
 
 <!-- Botão SOS Flutuante -->
-<button id="sosButton" class="sos-btn" onclick="abrirSOS()" aria-label="Emergência SOS">
+<button id="sosButton" class="sos-btn" aria-label="Emergência SOS">
   <i class="fas fa-phone-alt"></i>
   <span class="sos-pulse"></span>
 </button>
@@ -50,21 +41,6 @@
 <button id="contrasteToggle" class="contraste-btn" title="Alternar alto contraste">
   <i class="fas fa-sun"></i>
 </button>
-
-<!-- Botão Instalar PWA -->
-<div id="pwaInstallBanner" class="pwa-banner" style="display:none">
-  <div class="pwa-content">
-    <i class="fas fa-mobile-alt"></i>
-    <div>
-      <strong>Melhor experiência!</strong>
-      <p>Instale o app na tela inicial para acesso rápido</p>
-    </div>
-  </div>
-  <button class="btn btn-small" onclick="instalarPWA()">Instalar</button>
-  <button class="btn-icon" onclick="fecharBannerPWA()">
-    <i class="fas fa-times"></i>
-  </button>
-</div>
 
 <div class="top-actions container">
   <div class="actions-left">
@@ -90,22 +66,12 @@
   <!-- TELA DE BOAS VINDAS -->
   <section id="welcome" class="tela ativa">
     <div class="welcome-content">
-      <img src="assets/avatar.png" class="avatar-large" alt="Avatar QSSMA" loading="lazy" />
+      <img src="avatar.png" class="avatar-large" alt="Avatar QSSMA" loading="lazy" />
       <div class="welcome-text">
         <h2><i class="fas fa-shield-alt"></i> Bem-vindo ao Portal QSSMA</h2>
         <p class="welcome-subtitle">Sistema de gestão e registro de eventos de segurança da empresa.</p>
         
-        <div class="alert-card">
-          <div class="alert-icon">
-            <i class="fas fa-info-circle"></i>
-          </div>
-          <div class="alert-content">
-            <strong>📱 Instale o app!</strong>
-            <p>Para melhor experiência, adicione este app à sua tela inicial.</p>
-          </div>
-        </div>
-        
-        <button class="btn btn-primary btn-large" onclick="entrarNoPortal()">
+        <button class="btn btn-primary btn-large" id="acessarPortalBtn">
           <i class="fas fa-sign-in-alt"></i> Acessar Portal
         </button>
       </div>
@@ -120,7 +86,7 @@
     </div>
     
     <div class="cards-grid">
-      <div class="profile-card" onclick="selecionarPerfil('usuario')" tabindex="0" role="button">
+      <div class="profile-card" id="perfilUsuarioBtn">
         <div class="card-icon usuario">
           <i class="fas fa-user-shield"></i>
         </div>
@@ -133,7 +99,7 @@
         </div>
       </div>
       
-      <div class="profile-card" onclick="selecionarPerfil('gestor')" tabindex="0" role="button">
+      <div class="profile-card" id="perfilGestorBtn">
         <div class="card-icon gestor">
           <i class="fas fa-cogs"></i>
         </div>
@@ -148,7 +114,7 @@
     </div>
     
     <div class="action-footer">
-      <button class="btn btn-secondary" onclick="mostrarTela('welcome')">
+      <button class="btn btn-secondary" id="voltarWelcomeBtn">
         <i class="fas fa-arrow-left"></i> Voltar
       </button>
     </div>
@@ -178,14 +144,13 @@
           aria-label="Matrícula do colaborador"
           maxlength="10"
           autocomplete="off"
-          autofocus
         />
         <div class="form-hint">
           <i class="fas fa-info-circle"></i> Exemplo: QS1234
         </div>
       </div>
       
-      <button class="btn btn-primary btn-block" onclick="confirmarMatriculaUsuario()" id="loginUsuarioBtn">
+      <button class="btn btn-primary btn-block" id="loginUsuarioBtn">
         <i class="fas fa-sign-in-alt"></i> Entrar
       </button>
       
@@ -195,7 +160,7 @@
     </div>
     
     <div class="action-footer">
-      <button class="btn btn-secondary" onclick="mostrarTela('telaEscolhaPerfil')">
+      <button class="btn btn-secondary" id="voltarPerfilBtn">
         <i class="fas fa-arrow-left"></i> Voltar
       </button>
     </div>
@@ -224,16 +189,11 @@
     </div>
     
     <div class="cards-grid" id="cardsUsuario">
-      <!-- Skeleton loading -->
-      <div class="skeleton-card"></div>
-      <div class="skeleton-card"></div>
-      <div class="skeleton-card"></div>
-      <div class="skeleton-card"></div>
-      <div class="skeleton-card"></div>
+      <!-- Cards serão gerados dinamicamente -->
     </div>
     
     <div class="action-footer">
-      <button class="btn btn-secondary" onclick="logout()">
+      <button class="btn btn-secondary" id="logoutUsuarioBtn">
         <i class="fas fa-sign-out-alt"></i> Sair
       </button>
     </div>
@@ -255,7 +215,7 @@
         <label for="gestorEmail">
           <i class="fas fa-envelope"></i> E-mail
         </label>
-        <input type="email" id="gestorEmail" placeholder="seu@email.com" class="form-input" autofocus />
+        <input type="email" id="gestorEmail" placeholder="seu@email.com" class="form-input" />
       </div>
       
       <div class="form-group">
@@ -265,7 +225,7 @@
         <input type="password" id="gestorSenha" placeholder="Sua senha" class="form-input" />
       </div>
       
-      <button class="btn btn-primary btn-block" onclick="loginGestor()">
+      <button class="btn btn-primary btn-block" id="loginGestorBtn">
         <i class="fas fa-sign-in-alt"></i> Entrar
       </button>
       
@@ -275,7 +235,7 @@
     </div>
     
     <div class="action-footer">
-      <button class="btn btn-secondary" onclick="mostrarTela('telaEscolhaPerfil')">
+      <button class="btn btn-secondary" id="voltarPerfilGestorBtn">
         <i class="fas fa-arrow-left"></i> Voltar
       </button>
     </div>
@@ -289,30 +249,55 @@
     </div>
     
     <div class="stats-grid" id="statsGestor">
-      <!-- Skeleton loading -->
-      <div class="skeleton-stat"></div>
-      <div class="skeleton-stat"></div>
-      <div class="skeleton-stat"></div>
+      <div class="stat-card">
+        <div class="stat-icon primary">
+          <i class="fas fa-users"></i>
+        </div>
+        <div class="stat-content">
+          <h3 id="totalColaboradores">0</h3>
+          <p>Colaboradores</p>
+        </div>
+      </div>
+      
+      <div class="stat-card">
+        <div class="stat-icon warning">
+          <i class="fas fa-bullhorn"></i>
+        </div>
+        <div class="stat-content">
+          <h3 id="avisosAtivosCount">0</h3>
+          <p>Avisos Ativos</p>
+        </div>
+      </div>
+      
+      <div class="stat-card">
+        <div class="stat-icon info">
+          <i class="fas fa-shield-alt"></i>
+        </div>
+        <div class="stat-content">
+          <h3 id="usuariosOnline">0</h3>
+          <p>Usuários Online</p>
+        </div>
+      </div>
     </div>
     
     <div class="dashboard-tabs">
-      <button class="dashboard-tab active" onclick="mostrarTab('avisos')" aria-controls="tabAvisos">
+      <button class="dashboard-tab active" data-tab="avisos">
         <i class="fas fa-bullhorn"></i> Gerenciar Avisos
       </button>
-      <button class="dashboard-tab" onclick="mostrarTab('colaboradores')" aria-controls="tabColaboradores">
+      <button class="dashboard-tab" data-tab="colaboradores">
         <i class="fas fa-users"></i> Colaboradores
       </button>
-      <button class="dashboard-tab" onclick="mostrarTab('relatorios')" aria-controls="tabRelatorios">
+      <button class="dashboard-tab" data-tab="relatorios">
         <i class="fas fa-chart-bar"></i> Relatórios
       </button>
     </div>
     
-    <div class="tab-content active" id="tabAvisos" role="tabpanel" aria-labelledby="tab-avisos">
+    <div class="tab-content active" id="tabAvisos">
       <div class="tab-header">
         <h3><i class="fas fa-bullhorn"></i> Gerenciar Avisos do Sistema</h3>
       </div>
       <div class="admin-actions">
-        <button class="btn btn-success" onclick="criarNovoAviso()">
+        <button class="btn btn-success" id="novoAvisoBtn">
           <i class="fas fa-plus"></i> Novo Aviso
         </button>
       </div>
@@ -324,7 +309,7 @@
       </div>
     </div>
     
-    <div class="tab-content" id="tabColaboradores" role="tabpanel" aria-labelledby="tab-colaboradores">
+    <div class="tab-content" id="tabColaboradores">
       <div class="tab-header">
         <h3><i class="fas fa-users"></i> Gestão de Colaboradores</h3>
       </div>
@@ -343,7 +328,7 @@
       </div>
     </div>
     
-    <div class="tab-content" id="tabRelatorios" role="tabpanel" aria-labelledby="tab-relatorios">
+    <div class="tab-content" id="tabRelatorios">
       <div class="tab-header">
         <h3><i class="fas fa-chart-bar"></i> Relatórios</h3>
       </div>
@@ -363,10 +348,10 @@
         </div>
         
         <div class="admin-actions">
-          <button class="btn" onclick="exportarRelatorios()">
+          <button class="btn" id="exportarRelatoriosBtn">
             <i class="fas fa-file-export"></i> Exportar Relatórios
           </button>
-          <button class="btn secondary" onclick="atualizarRelatorios()">
+          <button class="btn secondary" id="atualizarRelatoriosBtn">
             <i class="fas fa-sync"></i> Atualizar
           </button>
         </div>
@@ -374,28 +359,9 @@
     </div>
     
     <div class="action-footer">
-      <button class="btn btn-secondary" onclick="logout()">
+      <button class="btn btn-secondary" id="logoutGestorBtn">
         <i class="fas fa-sign-out-alt"></i> Sair
       </button>
-    </div>
-  </section>
-
-  <!-- TELA: FORMULÁRIO INTERNO -->
-  <section id="tela-formulario" class="tela hidden">
-    <div class="form-header">
-      <button class="btn-icon" onclick="fecharFormulario()">
-        <i class="fas fa-arrow-left"></i> Voltar
-      </button>
-      <h2 id="formTitulo"></h2>
-    </div>
-    
-    <div class="form-container">
-      <iframe id="formIframe" sandbox="allow-scripts allow-forms allow-popups" 
-        loading="lazy" title="Formulário QSSMA"></iframe>
-    </div>
-    
-    <div class="form-footer">
-      <p><i class="fas fa-lock"></i> Os dados são enviados diretamente ao Google Forms</p>
     </div>
   </section>
 
@@ -411,7 +377,7 @@
     
     <div class="sos-content">
       <div class="sos-cards">
-        <div class="sos-card danger" onclick="ligarPara('192')">
+        <div class="sos-card danger" data-telefone="192">
           <div class="sos-card-icon">
             <i class="fas fa-ambulance"></i>
           </div>
@@ -422,7 +388,7 @@
           </div>
         </div>
         
-        <div class="sos-card danger" onclick="ligarPara('193')">
+        <div class="sos-card danger" data-telefone="193">
           <div class="sos-card-icon">
             <i class="fas fa-fire"></i>
           </div>
@@ -433,7 +399,7 @@
           </div>
         </div>
         
-        <div class="sos-card danger" onclick="ligarPara('199')">
+        <div class="sos-card danger" data-telefone="199">
           <div class="sos-card-icon">
             <i class="fas fa-shield-alt"></i>
           </div>
@@ -444,7 +410,7 @@
           </div>
         </div>
         
-        <div class="sos-card warning" onclick="ligarPara('5594992233753')">
+        <div class="sos-card warning" data-telefone="5594992233753">
           <div class="sos-card-icon">
             <i class="fas fa-phone-alt"></i>
           </div>
@@ -457,7 +423,7 @@
       </div>
       
       <div class="sos-actions">
-        <button class="btn btn-danger btn-large" onclick="fecharSOS()">
+        <button class="btn btn-danger btn-large" id="fecharSOSBtn">
           <i class="fas fa-times"></i> Fechar
         </button>
       </div>
@@ -466,8 +432,22 @@
 
 </main>
 
+<!-- MODAL DE AVISOS -->
+<div id="avisosModal" class="modal-back hidden">
+  <div class="modal">
+    <button class="close" id="fecharAvisosBtn">✕</button>
+    <h3><i class="fas fa-bullhorn"></i> Avisos Importantes</h3>
+    <div class="avisos-list" id="avisosDinamicos">
+      <!-- Avisos serão carregados aqui -->
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" id="fecharAvisosModalBtn">Fechar</button>
+    </div>
+  </div>
+</div>
+
 <!-- LOADING OVERLAY -->
-<div id="loadingOverlay" class="loading-overlay" style="display:none">
+<div id="loadingOverlay" class="loading-overlay hidden">
   <div class="loading-content">
     <div class="loading-spinner"></div>
     <p id="loadingText">Carregando...</p>
@@ -475,13 +455,10 @@
 </div>
 
 <!-- OFFLINE BANNER -->
-<div id="offlineBanner" class="offline-banner" style="display:none" role="alert" aria-live="assertive">
+<div id="offlineBanner" class="offline-banner hidden">
   <i class="fas fa-wifi-slash"></i>
   <span>Você está offline. Algumas funcionalidades podem não estar disponíveis.</span>
 </div>
-
-<!-- Toast Container -->
-<div id="toastContainer" class="toast-container" aria-live="polite"></div>
 
 <footer class="footer-dev">
   <div class="footer-content">
@@ -496,23 +473,6 @@
     </div>
   </div>
 </footer>
-
-<script>
-  // Funções globais
-  window.mostrarTab = function(tabId) {
-    document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
-    document.querySelectorAll('.dashboard-tab').forEach(btn => btn.classList.remove('active'));
-    
-    const tabElement = document.getElementById(`tab${tabId.charAt(0).toUpperCase() + tabId.slice(1)}`);
-    if (tabElement) tabElement.classList.add('active');
-    
-    if (event && event.target) event.target.classList.add('active');
-  };
-
-  window.ligarPara = function(numero) {
-    window.location.href = `tel:${numero}`;
-  };
-</script>
 
 </body>
 </html>
