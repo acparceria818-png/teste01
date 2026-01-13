@@ -1,11 +1,12 @@
-// modules/auth.js - Autenticação e segurança
+// modules/auth.js - ATUALIZADO
 import { 
   auth,
   getColaborador,
   loginEmailSenha,
   getDoc,
   doc,
-  db
+  db,
+  deleteAviso as deleteAvisoFirebase  // Importar do firebase.js
 } from '../firebase.js';
 
 import { showToast, showLoading, hideLoading } from './ui.js';
@@ -198,3 +199,55 @@ export async function verificarAcessoGestor(acao) {
     return false;
   }
 }
+// modules/auth.js - ATUALIZADO
+import { 
+  auth,
+  getColaborador,
+  loginEmailSenha,
+  getDoc,
+  doc,
+  db,
+  deleteAviso as deleteAvisoFirebase  // Importar do firebase.js
+} from '../firebase.js';
+
+import { showToast, showLoading, hideLoading } from './ui.js';
+
+// ... restante do código ...
+
+// Adicionar esta função de verificação de acesso
+export async function verificarAcessoGestor(acao) {
+  try {
+    const user = auth.currentUser;
+    if (!user) {
+      showToast('error', 'Acesso negado', 'Faça login como gestor');
+      return false;
+    }
+    
+    // Em produção, verificar no Firestore se o usuário tem permissão de gestor
+    const userDoc = await getDoc(doc(db, 'usuarios', user.uid));
+    
+    if (userDoc.exists()) {
+      const data = userDoc.data();
+      const isGestor = data.role === 'gestor' || data.role === 'admin';
+      
+      if (!isGestor) {
+        showToast('error', 'Acesso negado', 'Apenas gestores podem realizar esta ação');
+        return false;
+      }
+    } else {
+      // Se não existe documento, não é gestor
+      showToast('error', 'Acesso negado', 'Permissões insuficientes');
+      return false;
+    }
+    
+    return true;
+    
+  } catch (erro) {
+    console.error('Erro ao verificar acesso:', erro);
+    showToast('error', 'Erro de segurança', 'Não foi possível verificar suas permissões');
+    return false;
+  }
+}
+
+// Exportar a função deleteAviso do Firebase
+export { deleteAvisoFirebase as deleteAviso };
