@@ -1,12 +1,12 @@
-// modules/auth.js - ATUALIZADO
+// modules/auth.js - CORRIGIDO
 import { 
-  auth,
+  auth as firebaseAuth,  // Renomear para evitar conflito
   getColaborador,
   loginEmailSenha,
   getDoc,
   doc,
   db,
-  deleteAviso as deleteAvisoFirebase  // Importar do firebase.js
+  deleteAviso as deleteAvisoFirebase
 } from '../firebase.js';
 
 import { showToast, showLoading, hideLoading } from './ui.js';
@@ -107,8 +107,9 @@ export async function loginGestor(email, senha, callbacks = {}) {
 export async function verificarPermissaoGestor(email) {
   try {
     // Verificar na coleção de gestores
-    // Implementação segura: o controle de acesso real deve estar nas regras do Firebase
-    return true; // Temporário - implementar lógica real
+    // Por enquanto, permitir qualquer email (em produção, implementar lógica real)
+    console.log('Verificando permissão para:', email);
+    return true;
     
   } catch (erro) {
     console.error('Erro ao verificar permissão:', erro);
@@ -137,8 +138,8 @@ export function logout() {
     keys.forEach(key => localStorage.removeItem(key));
     
     // Se estiver logado como gestor, fazer logout do Firebase
-    if (auth.currentUser) {
-      auth.signOut().catch(console.error);
+    if (firebaseAuth.currentUser) {
+      firebaseAuth.signOut().catch(console.error);
     }
     
     console.log('👋 Logout realizado');
@@ -148,22 +149,10 @@ export function logout() {
   }
 }
 
-// Verificar autenticação em tempo real
-export function monitorarAutenticacao(callback) {
-  return auth.onAuthStateChanged((user) => {
-    if (user) {
-      console.log('✅ Usuário autenticado:', user.email);
-    } else {
-      console.log('👤 Nenhum usuário autenticado');
-    }
-    if (callback) callback(user);
-  });
-}
-
 // Verificar se usuário atual é gestor
 export async function isGestor() {
   try {
-    const user = auth.currentUser;
+    const user = firebaseAuth.currentUser;
     if (!user) return false;
     
     // Verificar na coleção de permissões
@@ -188,55 +177,6 @@ export async function verificarAcessoGestor(acao) {
     
     if (!isGestor) {
       showToast('error', 'Acesso negado', 'Apenas gestores podem realizar esta ação');
-      return false;
-    }
-    
-    return true;
-    
-  } catch (erro) {
-    console.error('Erro ao verificar acesso:', erro);
-    showToast('error', 'Erro de segurança', 'Não foi possível verificar suas permissões');
-    return false;
-  }
-}
-// modules/auth.js - ATUALIZADO
-import { 
-  auth,
-  getColaborador,
-  loginEmailSenha,
-  getDoc,
-  doc,
-  db,
-  deleteAviso as deleteAvisoFirebase  // Importar do firebase.js
-} from '../firebase.js';
-
-import { showToast, showLoading, hideLoading } from './ui.js';
-
-// ... restante do código ...
-
-// Adicionar esta função de verificação de acesso
-export async function verificarAcessoGestor(acao) {
-  try {
-    const user = auth.currentUser;
-    if (!user) {
-      showToast('error', 'Acesso negado', 'Faça login como gestor');
-      return false;
-    }
-    
-    // Em produção, verificar no Firestore se o usuário tem permissão de gestor
-    const userDoc = await getDoc(doc(db, 'usuarios', user.uid));
-    
-    if (userDoc.exists()) {
-      const data = userDoc.data();
-      const isGestor = data.role === 'gestor' || data.role === 'admin';
-      
-      if (!isGestor) {
-        showToast('error', 'Acesso negado', 'Apenas gestores podem realizar esta ação');
-        return false;
-      }
-    } else {
-      // Se não existe documento, não é gestor
-      showToast('error', 'Acesso negado', 'Permissões insuficientes');
       return false;
     }
     
